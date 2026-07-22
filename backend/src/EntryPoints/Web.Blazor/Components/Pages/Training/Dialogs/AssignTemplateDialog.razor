@@ -1,0 +1,70 @@
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudSelect T="Guid?" @bind-Value="_templateId" Label="Modelo" Class="mb-2">
+            @foreach (var t in _templates)
+            {
+                <MudSelectItem T="Guid?" Value="@t.Id">@t.Name (@t.ItemCount ex.)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField @bind-Value="_nameOverride" Label="Nome do treino (opcional)" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy">Criar treino</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public Guid OwnerStudentId { get; set; }
+
+    private IReadOnlyList<WorkoutTemplateListItemDto> _templates = [];
+    private Guid? _templateId;
+    private string? _nameOverride;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _templates = await Api.ListTemplatesAsync(null, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar modelos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (_templateId is null)
+        {
+            Snackbar.Add("Selecione um modelo.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.CreateWorkoutFromTemplateAsync(
+                new CreateWorkoutFromTemplateRequest(_templateId.Value, OwnerStudentId, _nameOverride),
+                CancellationToken.None);
+            Snackbar.Add("Treino atribuído.", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

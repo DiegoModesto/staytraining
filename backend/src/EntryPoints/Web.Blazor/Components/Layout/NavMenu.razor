@@ -1,0 +1,44 @@
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+
+    <MudText Class="px-4 py-2" Typo="Typo.overline">Treinos</MudText>
+
+    <PermissionView Permission="student.read">
+        <MudNavLink Href="/students" Icon="@Icons.Material.Filled.Groups">Alunos</MudNavLink>
+    </PermissionView>
+
+    <PermissionView Permission="exercise.read">
+        <MudNavLink Href="/exercises" Icon="@Icons.Material.Filled.FitnessCenter">Exercícios</MudNavLink>
+    </PermissionView>
+
+    <PermissionView Permission="template.read">
+        <MudNavLink Href="/templates" Icon="@Icons.Material.Filled.ListAlt">Modelos</MudNavLink>
+    </PermissionView>
+
+    <MudDivider Class="my-2" />
+    <MudText Class="px-4 py-2" Typo="Typo.overline">Administração</MudText>
+
+    <PermissionView Permission="users.read">
+        <MudNavLink Href="/admin/users" Icon="@Icons.Material.Filled.People">Users</MudNavLink>
+    </PermissionView>
+
+    <PermissionView Permission="groups.read">
+        <MudNavLink Href="/admin/groups" Icon="@Icons.Material.Filled.Group">Groups</MudNavLink>
+    </PermissionView>
+
+    <PermissionView Permission="roles.read">
+        <MudNavLink Href="/admin/roles" Icon="@Icons.Material.Filled.AdminPanelSettings">Roles</MudNavLink>
+    </PermissionView>
+
+    <PermissionView Permission="permissions.read">
+        <MudNavLink Href="/admin/permissions" Icon="@Icons.Material.Filled.Lock">Permissions</MudNavLink>
+    </PermissionView>
+
+    <PermissionView Permission="m2m.read">
+        <MudNavLink Href="/admin/m2m-clients" Icon="@Icons.Material.Filled.Api">M2M Clients</MudNavLink>
+    </PermissionView>
+
+    <PermissionView Permission="audit.read">
+        <MudNavLink Href="/admin/audit" Icon="@Icons.Material.Filled.History">Audit Log</MudNavLink>
+    </PermissionView>
+</MudNavMenu>

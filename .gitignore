@@ -1,0 +1,39 @@
+# ---------- .NET ----------
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+.nuget-cache/
+.containers/
+TestResults/
+coverage.cobertura.xml
+*.trx
+
+# ---------- Flutter / Dart ----------
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/.pub-cache/
+mobile/.pub/
+mobile/pubspec.lock
+# Generated platform folders (recreate with `flutter create .`)
+mobile/android/
+mobile/ios/
+mobile/linux/
+mobile/macos/
+mobile/windows/
+mobile/web/
+
+# ---------- Secrets / certs ----------
+**/dev-certs/
+*.pfx
+
+# ---------- OS / editor ----------
+.DS_Store
+Thumbs.db
+*.swp
+
+# ---------- Agent / local ----------
+.claude/

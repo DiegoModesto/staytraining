@@ -1,0 +1,54 @@
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_userId" Label="User Id (auth)" Required Class="mb-2" />
+        <MudTextField @bind-Value="_fullName" Label="Nome completo" Required Class="mb-2" />
+        <MudTextField @bind-Value="_email" Label="E-mail" Class="mb-2" />
+        <MudTextField @bind-Value="_goals" Label="Objetivos / observações" Lines="3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    private string _userId = string.Empty;
+    private string _fullName = string.Empty;
+    private string? _email;
+    private string? _goals;
+    private bool _busy;
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (!Guid.TryParse(_userId, out Guid userId) || string.IsNullOrWhiteSpace(_fullName))
+        {
+            Snackbar.Add("Informe um User Id válido e o nome.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.RegisterStudentAsync(new RegisterStudentRequest(userId, _fullName, _email, null, _goals),
+                CancellationToken.None);
+            Snackbar.Add("Aluno cadastrado.", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

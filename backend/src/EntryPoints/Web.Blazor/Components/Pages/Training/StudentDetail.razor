@@ -1,0 +1,144 @@
+@page "/students/{StudentId:guid}"
+@attribute [Authorize]
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Ficha do aluno</PageTitle>
+
+<PermissionView Permission="student.read">
+    @if (_student is null)
+    {
+        <MudProgressCircular Indeterminate="_loading" />
+        @if (!_loading) { <MudAlert Severity="Severity.Warning">Aluno não encontrado.</MudAlert> }
+    }
+    else
+    {
+        <MudText Typo="Typo.h4" Class="mb-1">@_student.FullName</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">@_student.Email</MudText>
+        @if (!string.IsNullOrWhiteSpace(_student.Goals))
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-4">@_student.Goals</MudAlert>
+        }
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent><MudText Typo="Typo.h6">Ficha de observações</MudText></CardHeaderContent>
+                        <CardHeaderActions>
+                            <PermissionView Permission="health.write">
+                                <MudIconButton Icon="@Icons.Material.Filled.Add" OnClick="OpenAddObservation" />
+                            </PermissionView>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_student.HealthObservations.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2">Sem observações.</MudText>
+                        }
+                        else
+                        {
+                            <MudList T="HealthObservationDto" Dense>
+                                @foreach (var o in _student.HealthObservations)
+                                {
+                                    <MudListItem T="HealthObservationDto"
+                                                 Icon="@(o.Kind == HealthObservationKind.HealthIssue ? Icons.Material.Filled.HealthAndSafety : Icons.Material.Filled.Notes)">
+                                        <MudText Typo="Typo.subtitle2">@o.Title</MudText>
+                                        <MudText Typo="Typo.body2">@o.Detail</MudText>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent><MudText Typo="Typo.h6">Treinos</MudText></CardHeaderContent>
+                        <CardHeaderActions>
+                            <PermissionView Permission="workout.write">
+                                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.ContentCopy"
+                                           OnClick="OpenAssignTemplate">A partir de modelo</MudButton>
+                            </PermissionView>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_workouts.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2">Nenhum treino atribuído.</MudText>
+                        }
+                        else
+                        {
+                            <MudList T="WorkoutListItemDto" Dense>
+                                @foreach (var w in _workouts)
+                                {
+                                    <MudListItem T="WorkoutListItemDto" Icon="@Icons.Material.Filled.FitnessCenter">
+                                        @w.Name <MudChip T="string" Size="Size.Small">@w.ItemCount ex.</MudChip>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</PermissionView>
+
+@code {
+    [Parameter] public Guid StudentId { get; set; }
+
+    private StudentDetailDto? _student;
+    private IReadOnlyList<WorkoutListItemDto> _workouts = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _student = await Api.GetStudentAsync(StudentId, CancellationToken.None);
+            if (_student is not null)
+            {
+                _workouts = await Api.ListWorkoutsAsync(_student.UserId, CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar ficha: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenAddObservation()
+    {
+        var parameters = new DialogParameters<Dialogs.AddHealthObservationDialog>
+        {
+            { x => x.StudentProfileId, StudentId },
+        };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AddHealthObservationDialog>("Nova observação", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await LoadAsync();
+    }
+
+    private async Task OpenAssignTemplate()
+    {
+        if (_student is null) return;
+        var parameters = new DialogParameters<Dialogs.AssignTemplateDialog>
+        {
+            { x => x.OwnerStudentId, _student.UserId },
+        };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AssignTemplateDialog>("Atribuir treino de modelo", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await LoadAsync();
+    }
+}

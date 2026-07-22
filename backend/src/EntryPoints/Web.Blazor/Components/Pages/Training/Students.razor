@@ -1,0 +1,71 @@
+@page "/students"
+@attribute [Authorize]
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Alunos</PageTitle>
+
+<PermissionView Permission="student.read">
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h4">Alunos</MudText>
+        <MudSpacer />
+        <PermissionView Permission="student.manage">
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PersonAdd"
+                       OnClick="OpenRegister">Cadastrar aluno</MudButton>
+        </PermissionView>
+    </MudStack>
+
+    <MudTable Items="_students" Hover Loading="_loading" Dense Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Nome</MudTh>
+            <MudTh>E-mail</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Nome">@context.FullName</MudTd>
+            <MudTd DataLabel="E-mail">@context.Email</MudTd>
+            <MudTd>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                           OnClick="@(() => Nav.NavigateTo($"/students/{context.Id}"))">Abrir ficha</MudButton>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>Nenhum aluno cadastrado.</MudText></NoRecordsContent>
+    </MudTable>
+</PermissionView>
+
+@code {
+    private IReadOnlyList<StudentListItemDto> _students = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _students = await Api.ListStudentsAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar alunos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenRegister()
+    {
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.RegisterStudentDialog>("Cadastrar aluno");
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled)
+        {
+            await LoadAsync();
+        }
+    }
+}

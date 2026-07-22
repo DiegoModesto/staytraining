@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Coverage settings for the StayTraining business layers (Application + Domain).
+  Infra is infrastructure plumbing (auth, messaging, storage, EF configs, migrations) exercised
+  by the integration tests, not unit tests, so it is excluded from the unit coverage gate.
+  See backend/README or CLAUDE.md for the exact command.
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Include>[Application]*,[Domain]*</Include>
+          <ExcludeByFile>**/Migrations/**</ExcludeByFile>
+          <ExcludeByAttribute>GeneratedCodeAttribute</ExcludeByAttribute>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

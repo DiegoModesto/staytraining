@@ -1,0 +1,72 @@
+namespace Auth.Domain.Permissions;
+
+public static class PermissionCodes
+{
+    public const string UsersRead = "users.read";
+    public const string UsersWrite = "users.write";
+    public const string GroupsRead = "groups.read";
+    public const string GroupsWrite = "groups.write";
+    public const string RolesRead = "roles.read";
+    public const string RolesWrite = "roles.write";
+    public const string M2MClientsRead = "m2mclients.read";
+    public const string M2MClientsWrite = "m2mclients.write";
+    public const string AuditRead = "audit.read";
+    public const string SampleRead = "sample.read";
+    public const string SampleWrite = "sample.write";
+
+    // StayTraining domain permissions
+    public const string ExerciseRead = "exercise.read";
+    public const string ExerciseWrite = "exercise.write";
+    public const string TemplateRead = "template.read";
+    public const string TemplateWrite = "template.write";
+    public const string WorkoutRead = "workout.read";
+    public const string WorkoutWrite = "workout.write";
+    public const string StudentRead = "student.read";
+    public const string StudentManage = "student.manage";
+    public const string HealthRead = "health.read";
+    public const string HealthWrite = "health.write";
+    public const string SessionWrite = "session.write";
+    public const string NoteWrite = "note.write";
+    public const string ReportRead = "report.read";
+
+    public static IReadOnlyCollection<(string Code, string Description)> All { get; } =
+    [
+        (UsersRead, "Read users"),
+        (UsersWrite, "Create and modify users"),
+        (GroupsRead, "Read groups"),
+        (GroupsWrite, "Create and modify groups"),
+        (RolesRead, "Read roles"),
+        (RolesWrite, "Create and modify roles"),
+        (M2MClientsRead, "Read machine-to-machine clients"),
+        (M2MClientsWrite, "Create and modify machine-to-machine clients"),
+        (AuditRead, "Read audit events"),
+        (SampleRead, "Read sample entities"),
+        (SampleWrite, "Create and modify sample entities"),
+        (ExerciseRead, "Read exercises"),
+        (ExerciseWrite, "Create and modify exercises"),
+        (TemplateRead, "Read workout templates"),
+        (TemplateWrite, "Create and modify workout templates"),
+        (WorkoutRead, "Read workouts"),
+        (WorkoutWrite, "Create and modify workouts"),
+        (StudentRead, "Read students"),
+        (StudentManage, "Register and manage students"),
+        (HealthRead, "Read student health observations"),
+        (HealthWrite, "Create and modify student health observations"),
+        (SessionWrite, "Start and complete workout sessions"),
+        (NoteWrite, "Create exercise notes"),
+        (ReportRead, "Read training reports"),
+    ];
+
+    /// <summary>Permissions granted to the Aluno (student) role.</summary>
+    public static IReadOnlyCollection<string> StudentRole { get; } =
+    [
+        ExerciseRead, TemplateRead, WorkoutRead, SessionWrite, NoteWrite, ReportRead,
+    ];
+
+    /// <summary>Permissions granted to the Professor (teacher) role — superset of the student's.</summary>
+    public static IReadOnlyCollection<string> TeacherRole { get; } =
+    [
+        ExerciseRead, ExerciseWrite, TemplateRead, TemplateWrite, WorkoutRead, WorkoutWrite,
+        StudentRead, StudentManage, HealthRead, HealthWrite, SessionWrite, NoteWrite, ReportRead,
+    ];
+}

@@ -1,0 +1,230 @@
+services:
+  web.api:
+    image: ${DOCKER_REGISTRY-}webapi
+    container_name: staytraining_api
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+      - auth.api
+    build:
+      context: .
+      dockerfile: src/EntryPoints/Web.API/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=staytraining;Username=postgres;Password=postgres;
+      - Auth__Authority=http://auth.api:8080
+      - Auth__IntrospectionEndpoint=http://auth.api:8080/connect/introspect
+      - Auth__IntrospectionClientId=web-api
+      - Auth__IntrospectionClientSecret=${OPENIDDICT_WEB_API_SECRET:-dev-only-web-api-secret-change-me}
+      - Redis__ConnectionString=redis:6379
+      - IntrospectionCache__TtlSeconds=30
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - STORAGE_ENDPOINT=minio:9000
+      - STORAGE_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - STORAGE_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - STORAGE_BUCKET=exercise-media
+      - STORAGE_PUBLIC_ENDPOINT=localhost:9000
+      - Seed__TenantId=11111111-1111-1111-1111-111111111111
+    # Host port retained for V1 dev convenience; production deployments should remove this
+    # so Web.API is reachable only through the gateway.
+    ports:
+      - "5010:8080"
+
+  worker:
+    image: ${DOCKER_REGISTRY-}worker
+    container_name: staytraining_worker
+    depends_on:
+      - postgres
+      - rabbitmq
+    build:
+      context: .
+      dockerfile: src/EntryPoints/Worker/Dockerfile
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=staytraining;Username=postgres;Password=postgres;
+      - JWT_SECRET=dev-only-secret-change-me-please-32bytes-minimum!!
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+
+  web.blazor:
+    image: ${DOCKER_REGISTRY-}webblazor
+    container_name: staytraining_blazor
+    depends_on:
+      - redis
+      - auth.api
+      - gateway
+    build:
+      context: .
+      dockerfile: src/EntryPoints/Web.Blazor/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Auth__Authority=http://auth.api:8080
+      - Auth__ClientId=bff-blazor
+      - Auth__ClientSecret=${OPENIDDICT_BFF_SECRET:-dev-only-bff-secret-change-me}
+      - Redis__ConnectionString=redis:6379
+      - Gateway__BaseUrl=http://gateway:8080
+    ports:
+      - "5002:8080"
+
+  cronjobs:
+    image: ${DOCKER_REGISTRY-}cronjobs
+    container_name: staytraining_cronjobs
+    depends_on:
+      - postgres
+      - rabbitmq
+    build:
+      context: .
+      dockerfile: src/EntryPoints/CronJobs/Dockerfile
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=staytraining;Username=postgres;Password=postgres;
+      - JWT_SECRET=dev-only-secret-change-me-please-32bytes-minimum!!
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+
+  postgres:
+    image: postgres:17
+    container_name: staytraining_db
+    environment:
+      - POSTGRES_DB=staytraining
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./.containers/db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: staytraining_mq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  seq:
+    image: datalust/seq:latest
+    container_name: staytraining_seq
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
+    ports:
+      - "5341:5341"
+      - "8081:80"
+    volumes:
+      - ./.containers/seq:/data
+
+  auth.api:
+    image: ${DOCKER_REGISTRY-}authapi
+    container_name: staytraining_auth_api
+    depends_on:
+      - auth-postgres
+      - redis
+    build:
+      context: .
+      dockerfile: src/EntryPoints/Auth.API/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__AuthDb=Host=auth-postgres;Port=5432;Database=auth_db;Username=postgres;Password=postgres;
+      - Redis__ConnectionString=redis:6379
+      - Entra__Authority=${ENTRA_AUTHORITY:-}
+      - Entra__ClientId=${ENTRA_CLIENT_ID:-}
+      - Entra__ClientSecret=${ENTRA_CLIENT_SECRET:-}
+      - OpenIddict__Issuer=http://localhost:5100
+      - OpenIddict__DisableTransportSecurityRequirement=true
+      - OPENIDDICT_BFF_SECRET=${OPENIDDICT_BFF_SECRET:-dev-only-bff-secret-change-me}
+      - OPENIDDICT_WEB_API_SECRET=${OPENIDDICT_WEB_API_SECRET:-dev-only-web-api-secret-change-me}
+      - OPENIDDICT_GATEWAY_SECRET=${OPENIDDICT_GATEWAY_SECRET:-dev-only-gateway-secret-change-me}
+      # NetSuite SAML outbound SSO (Plan 4). Defaults assume the dev cert generated by
+      # `bash scripts/generate-dev-saml-cert.sh` and a placeholder NetSuite account.
+      - NetSuite__AccountId=${NETSUITE_ACCOUNT_ID:-1234567}
+      - NetSuite__SamlAcsUrl=${NETSUITE_SAML_ACS_URL:-https://system.netsuite.com/saml2/acs?account=1234567}
+      - NetSuite__SamlAudience=${NETSUITE_SAML_AUDIENCE:-https://system.netsuite.com/sp/1234567}
+      - NetSuite__SamlIssuer=${NETSUITE_SAML_ISSUER:-https://auth.local/saml/netsuite}
+      - NetSuite__SamlSigningCertificatePath=/app/dev-certs/netsuite-saml.pfx
+      - NetSuite__SamlSigningCertificatePassword=${NETSUITE_SAML_CERT_PASSWORD:-dev-saml-password}
+    volumes:
+      - ./src/EntryPoints/Auth.API/dev-certs:/app/dev-certs:ro
+    ports:
+      - "5100:8080"
+
+  gateway:
+    image: ${DOCKER_REGISTRY-}gateway
+    container_name: staytraining_gateway
+    depends_on:
+      - redis
+      - auth.api
+    build:
+      context: .
+      dockerfile: src/EntryPoints/Gateway/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Redis__ConnectionString=redis:6379
+      - Auth__Authority=http://auth.api:8080
+      - Auth__IntrospectionEndpoint=http://auth.api:8080/connect/introspect
+      - Auth__IntrospectionClientId=gateway
+      - Auth__IntrospectionClientSecret=${OPENIDDICT_GATEWAY_SECRET:-dev-only-gateway-secret-change-me}
+      - IntrospectionCache__TtlSeconds=30
+      - ReverseProxy__Routes__auth-discovery__ClusterId=auth-cluster
+      - ReverseProxy__Routes__auth-discovery__Match__Path=/api/auth/.well-known/{**catch-all}
+      - ReverseProxy__Routes__auth-discovery__Transforms__0__PathRemovePrefix=/api/auth
+      - ReverseProxy__Routes__auth-connect__ClusterId=auth-cluster
+      - ReverseProxy__Routes__auth-connect__Match__Path=/api/auth/connect/{**catch-all}
+      - ReverseProxy__Routes__auth-connect__Transforms__0__PathRemovePrefix=/api/auth
+      - ReverseProxy__Routes__auth-admin__ClusterId=auth-cluster
+      - ReverseProxy__Routes__auth-admin__Match__Path=/api/auth/admin/{**catch-all}
+      - ReverseProxy__Routes__auth-admin__AuthorizationPolicy=RequireBearer
+      - ReverseProxy__Routes__auth-admin__Transforms__0__PathRemovePrefix=/api/auth
+      - ReverseProxy__Routes__auth-saml__ClusterId=auth-cluster
+      - ReverseProxy__Routes__auth-saml__Match__Path=/api/auth/saml/{**catch-all}
+      - ReverseProxy__Routes__auth-saml__AuthorizationPolicy=RequireBearer
+      - ReverseProxy__Routes__auth-saml__Transforms__0__PathRemovePrefix=/api/auth
+      - ReverseProxy__Routes__web-api__ClusterId=web-api-cluster
+      - ReverseProxy__Routes__web-api__Match__Path=/api/v1/{**catch-all}
+      - ReverseProxy__Routes__web-api__AuthorizationPolicy=RequireBearer
+      - ReverseProxy__Clusters__auth-cluster__Destinations__auth__Address=http://auth.api:8080/
+      - ReverseProxy__Clusters__web-api-cluster__Destinations__web-api__Address=http://web.api:8080/
+    ports:
+      - "5200:8080"
+
+  auth-postgres:
+    image: postgres:17
+    container_name: staytraining_auth_db
+    environment:
+      - POSTGRES_DB=auth_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./.containers/auth-db:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: staytraining_redis
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    container_name: staytraining_minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - ./.containers/minio:/data
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+
+volumes:
+  postgresql_data:
+    driver: local

@@ -1,0 +1,90 @@
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_name" Label="Nome" Required Class="mb-2" />
+        <MudTextField @bind-Value="_description" Label="Descrição" Lines="2" Class="mb-2" />
+        <MudSelect @bind-Value="_category" Label="Categoria" Class="mb-2">
+            @foreach (var c in Enum.GetValues<ExerciseCategory>())
+            {
+                <MudSelectItem Value="c">@c</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect T="Guid?" @bind-Value="_muscleGroupId" Label="Músculo principal" Class="mb-2">
+            @foreach (var m in _muscleGroups)
+            {
+                <MudSelectItem T="Guid?" Value="@m.Id">@m.Name (@m.BodyRegion)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField @bind-Value="_usageExample" Label="Exemplo de uso" Lines="2" Class="mb-2" />
+        <MudStack Row>
+            <MudNumericField @bind-Value="_sets" Label="Séries" Min="0" />
+            <MudNumericField @bind-Value="_reps" Label="Repetições" Min="0" />
+            <MudNumericField @bind-Value="_rest" Label="Descanso (s)" Min="0" />
+        </MudStack>
+        <MudSwitch @bind-Value="_isAerobic" Label="Aeróbico" Color="Color.Primary" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    private IReadOnlyList<MuscleGroupDto> _muscleGroups = [];
+    private string _name = string.Empty;
+    private string? _description;
+    private ExerciseCategory _category = ExerciseCategory.Musculacao;
+    private Guid? _muscleGroupId;
+    private string? _usageExample;
+    private int _sets = 3;
+    private int _reps = 12;
+    private int _rest = 60;
+    private bool _isAerobic;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _muscleGroups = await Api.ListMuscleGroupsAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar músculos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_name) || _muscleGroupId is null)
+        {
+            Snackbar.Add("Informe o nome e o músculo principal.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.CreateExerciseAsync(new CreateExerciseRequest(
+                _name, _description, _category, _muscleGroupId.Value, _usageExample,
+                _sets, _reps, _rest, _isAerobic), CancellationToken.None);
+            Snackbar.Add("Exercício criado.", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

@@ -1,0 +1,64 @@
+@page "/exercises"
+@attribute [Authorize]
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Exercícios</PageTitle>
+
+<PermissionView Permission="exercise.read">
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h4">Exercícios</MudText>
+        <MudSpacer />
+        <PermissionView Permission="exercise.write">
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreate">Novo exercício</MudButton>
+        </PermissionView>
+    </MudStack>
+
+    <MudTable Items="_exercises" Hover Loading="_loading" Dense Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Nome</MudTh>
+            <MudTh>Categoria</MudTh>
+            <MudTh>Aeróbico</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Nome">@context.Name</MudTd>
+            <MudTd DataLabel="Categoria">@context.Category</MudTd>
+            <MudTd DataLabel="Aeróbico">@(context.IsAerobic ? "Sim" : "Não")</MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>Nenhum exercício cadastrado.</MudText></NoRecordsContent>
+    </MudTable>
+</PermissionView>
+
+@code {
+    private IReadOnlyList<ExerciseListItemDto> _exercises = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _exercises = await Api.ListExercisesAsync(null, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar exercícios: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreate()
+    {
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.CreateExerciseDialog>("Novo exercício");
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await LoadAsync();
+    }
+}

@@ -1,0 +1,53 @@
+@page "/templates"
+@attribute [Authorize]
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+
+<PageTitle>Modelos de treino</PageTitle>
+
+<PermissionView Permission="template.read">
+    <MudText Typo="Typo.h4" Class="mb-3">Modelos de treino</MudText>
+
+    <MudTable Items="_templates" Hover Loading="_loading" Dense Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Nome</MudTh>
+            <MudTh>Categoria</MudTh>
+            <MudTh>Exercícios</MudTh>
+            <MudTh>Padrão</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Nome">@context.Name</MudTd>
+            <MudTd DataLabel="Categoria">@(context.Category?.ToString() ?? "-")</MudTd>
+            <MudTd DataLabel="Exercícios">@context.ItemCount</MudTd>
+            <MudTd DataLabel="Padrão">
+                @if (context.IsSystemDefault)
+                {
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small">Padrão</MudChip>
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>Nenhum modelo cadastrado.</MudText></NoRecordsContent>
+    </MudTable>
+</PermissionView>
+
+@code {
+    private IReadOnlyList<WorkoutTemplateListItemDto> _templates = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _templates = await Api.ListTemplatesAsync(null, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar modelos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
