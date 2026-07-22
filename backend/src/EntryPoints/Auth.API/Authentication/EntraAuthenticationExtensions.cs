@@ -7,6 +7,18 @@ internal static class EntraAuthenticationExtensions
 {
     internal const string SchemeName = "Entra";
 
+    /// <summary>
+    /// True when all three Entra federation settings are present. When false in Development we
+    /// register a local stand-in scheme (<see cref="DevEntraAuthenticationHandler"/>) instead.
+    /// </summary>
+    public static bool IsConfigured(IConfiguration configuration)
+    {
+        var section = configuration.GetSection("Entra");
+        return !string.IsNullOrWhiteSpace(section["Authority"])
+            && !string.IsNullOrWhiteSpace(section["ClientId"])
+            && !string.IsNullOrWhiteSpace(section["ClientSecret"]);
+    }
+
     public static IServiceCollection AddEntraExternal(this IServiceCollection services, IConfiguration configuration)
     {
         var section = configuration.GetSection("Entra");

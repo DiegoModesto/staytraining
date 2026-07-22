@@ -1,9 +1,11 @@
 @page "/students/{StudentId:guid}"
+@rendermode InteractiveServer
 @attribute [Authorize]
 @using Web.Blazor.Training
 @inject ITrainingApiClient Api
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
 <PageTitle>Ficha do aluno</PageTitle>
 
@@ -15,7 +17,18 @@
     }
     else
     {
-        <MudText Typo="Typo.h4" Class="mb-1">@_student.FullName</MudText>
+        <MudStack Row AlignItems="AlignItems.Center" Class="mb-1">
+            <MudText Typo="Typo.h4">@_student.FullName</MudText>
+            <MudSpacer />
+            <PermissionView Permission="workout.read">
+                <MudButton StartIcon="@Icons.Material.Filled.CalendarMonth"
+                           OnClick="@(() => Nav.NavigateTo($"/students/{StudentId}/schedule"))">Agenda</MudButton>
+            </PermissionView>
+            <PermissionView Permission="report.read">
+                <MudButton StartIcon="@Icons.Material.Filled.Assessment"
+                           OnClick="@(() => Nav.NavigateTo($"/students/{StudentId}/report"))">Relatório semanal</MudButton>
+            </PermissionView>
+        </MudStack>
         <MudText Typo="Typo.body2" Class="mb-4">@_student.Email</MudText>
         @if (!string.IsNullOrWhiteSpace(_student.Goals))
         {
@@ -61,8 +74,10 @@
                         <CardHeaderContent><MudText Typo="Typo.h6">Treinos</MudText></CardHeaderContent>
                         <CardHeaderActions>
                             <PermissionView Permission="workout.write">
+                                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                                           Color="Color.Primary" OnClick="OpenCreateWorkout">Novo treino</MudButton>
                                 <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.ContentCopy"
-                                           OnClick="OpenAssignTemplate">A partir de modelo</MudButton>
+                                           OnClick="OpenAssignTemplate">De modelo</MudButton>
                             </PermissionView>
                         </CardHeaderActions>
                     </MudCardHeader>
@@ -76,7 +91,8 @@
                             <MudList T="WorkoutListItemDto" Dense>
                                 @foreach (var w in _workouts)
                                 {
-                                    <MudListItem T="WorkoutListItemDto" Icon="@Icons.Material.Filled.FitnessCenter">
+                                    <MudListItem T="WorkoutListItemDto" Icon="@Icons.Material.Filled.FitnessCenter"
+                                                 OnClick="() => OpenWorkout(w.Id)">
                                         @w.Name <MudChip T="string" Size="Size.Small">@w.ItemCount ex.</MudChip>
                                     </MudListItem>
                                 }
@@ -128,6 +144,23 @@
         IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AddHealthObservationDialog>("Nova observação", parameters);
         DialogResult? r = await dlg.Result;
         if (r is not null && !r.Canceled) await LoadAsync();
+    }
+
+    private void OpenWorkout(Guid workoutId) => Nav.NavigateTo($"/workouts/{workoutId}");
+
+    private async Task OpenCreateWorkout()
+    {
+        if (_student is null) return;
+        var parameters = new DialogParameters<Dialogs.CreateWorkoutDialog>
+        {
+            { x => x.OwnerStudentId, _student.UserId },
+        };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.CreateWorkoutDialog>("Novo treino", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled && r.Data is Guid id)
+        {
+            Nav.NavigateTo($"/workouts/{id}");
+        }
     }
 
     private async Task OpenAssignTemplate()

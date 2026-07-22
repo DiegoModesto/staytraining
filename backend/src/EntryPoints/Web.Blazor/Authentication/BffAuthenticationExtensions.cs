@@ -69,6 +69,9 @@ public static class BffAuthenticationExtensions
                 options.Scope.Add("profile");
                 options.Scope.Add("email");
                 options.Scope.Add("offline_access");
+                // Request the API resource scope so the issued access token carries the `api:web`
+                // audience Web.API / Gateway require (see AuthorizeEndpoint.SetResources).
+                options.Scope.Add("api:web");
 
                 options.TokenValidationParameters.NameClaimType = "name";
                 options.TokenValidationParameters.RoleClaimType = "role";

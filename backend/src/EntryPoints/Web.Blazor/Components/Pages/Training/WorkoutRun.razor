@@ -1,0 +1,320 @@
+@page "/workouts/{WorkoutId:guid}/run"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Web.Blazor.Training
+@implements IDisposable
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Execução de treino</PageTitle>
+
+<PermissionView Permission="workout.read">
+    @if (_workout is null)
+    {
+        @if (_loading) { <MudProgressCircular Indeterminate /> }
+        else { <MudAlert Severity="Severity.Warning">Treino não encontrado.</MudAlert> }
+    }
+    else if (_items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">Treino sem exercícios. Volte e monte a ficha.</MudAlert>
+    }
+    else if (_finished)
+    {
+        <MudPaper Class="pa-8" Outlined Elevation="0" Style="text-align:center;max-width:520px;margin:8vh auto">
+            <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Style="font-size:64px;color:var(--st-volt)" />
+            <MudText Typo="Typo.h4" Class="mt-2">Treino concluído!</MudText>
+            <MudText Typo="Typo.body1" Class="mb-4" Style="color:var(--mud-palette-text-secondary)">
+                @_workout.Name · @_items.Count exercícios
+            </MudText>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="BackToWorkout">Voltar ao treino</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        var item = _items[_current];
+        var total = TotalUnits(item);
+        <div style="max-width:960px;margin:0 auto">
+            <!-- header -->
+            <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+                <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="BackToWorkout" />
+                <div style="flex:1">
+                    <MudText Typo="Typo.h5">@_workout.Name</MudText>
+                    <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-secondary)">
+                        Exercício @(_current + 1) de @_items.Count
+                    </MudText>
+                </div>
+                <MudChip T="string" Variant="Variant.Outlined" Class="st-cat-chip"
+                         Style="@($"color:{CategoryDisplay.Color(_workout.Category)};border-color:{CategoryDisplay.Color(_workout.Category)}")">
+                    @CategoryDisplay.Label(_workout.Category)
+                </MudChip>
+            </MudStack>
+            <MudProgressLinear Color="Color.Primary" Value="@OverallPercent" Class="mb-4" Rounded Size="Size.Small" />
+
+            <MudGrid>
+                <!-- current exercise + sets -->
+                <MudItem xs="12" md="7">
+                    <MudPaper Class="pa-4" Outlined Elevation="0">
+                        <MudText Typo="Typo.overline" Style="color:var(--mud-palette-text-secondary)">Agora — @(_current + 1)/@_items.Count</MudText>
+                        <MudText Typo="Typo.h4" Class="mb-1">@ExerciseName(item.ExerciseId)</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-4" Style="color:var(--mud-palette-text-secondary)">
+                            @(string.IsNullOrWhiteSpace(item.SectionLabel) ? "" : $"{item.SectionLabel} · ")@Prescription(item)
+                        </MudText>
+
+                        <MudStack Spacing="2">
+                            @for (int s = 0; s < total; s++)
+                            {
+                                var done = s < _doneUnits;
+                                <MudPaper Outlined Elevation="0"
+                                          Class="pa-3 d-flex align-center"
+                                          Style="@(done ? "border-color:var(--st-volt)" : "")">
+                                    <MudText Typo="Typo.h6" Style="width:36px">@(s + 1)</MudText>
+                                    <MudText Typo="Typo.body2" Style="flex:1;color:var(--mud-palette-text-secondary)">
+                                        @UnitLabel(item)
+                                    </MudText>
+                                    <MudIcon Icon="@(done ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.RadioButtonUnchecked)"
+                                             Style="@(done ? "color:var(--st-volt)" : "")" />
+                                </MudPaper>
+                            }
+                        </MudStack>
+
+                        @if (!string.IsNullOrWhiteSpace(item.ProfessorComment))
+                        {
+                            <MudAlert Severity="Severity.Info" Dense Class="mt-3">💬 @item.ProfessorComment</MudAlert>
+                        }
+                    </MudPaper>
+                </MudItem>
+
+                <!-- timer + next -->
+                <MudItem xs="12" md="5">
+                    <MudPaper Class="pa-4" Outlined Elevation="0" Style="text-align:center">
+                        <MudText Typo="Typo.overline" Style="color:var(--mud-palette-text-secondary)">
+                            @(_restRemaining > 0 ? "Descanso" : "Pronto")
+                        </MudText>
+                        <div style="@TimerStyle()">
+                            <div style="position:relative;text-align:center">
+                                <div style="font-family:Archivo,sans-serif;font-weight:800;font-size:46px;line-height:1">@FormatTime(_restRemaining)</div>
+                                <div style="font-size:11px;letter-spacing:.16em;color:var(--mud-palette-text-secondary)">@(_restRemaining > 0 ? "RESTAM" : "VAMOS")</div>
+                            </div>
+                        </div>
+                        @if (_restRemaining > 0)
+                        {
+                            <MudButton Size="Size.Small" OnClick="SkipRest">Pular descanso</MudButton>
+                        }
+
+                        @if (_next is not null)
+                        {
+                            <MudPaper Outlined Elevation="0" Class="pa-3 mt-4" Style="text-align:left">
+                                <MudText Typo="Typo.overline" Style="color:var(--mud-palette-text-secondary)">A seguir</MudText>
+                                <MudText Typo="Typo.subtitle1">@ExerciseName(_next.ExerciseId)</MudText>
+                            </MudPaper>
+                        }
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            <!-- footer actions -->
+            <MudStack Row Class="mt-4" Spacing="3">
+                @if (_doneUnits < total)
+                {
+                    <MudButton FullWidth Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Check" Disabled="_busy" OnClick="CompleteUnit">
+                        Concluir @(CategoryDisplay.IsIntervalBased(_workout.Category) ? "round" : "série")
+                    </MudButton>
+                }
+                else if (_next is not null)
+                {
+                    <MudButton FullWidth Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large"
+                               EndIcon="@Icons.Material.Filled.ArrowForward" Disabled="_busy" OnClick="NextExercise">
+                        Próximo exercício
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton FullWidth Color="Color.Success" Variant="Variant.Filled" Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Flag" Disabled="_busy" OnClick="Finish">
+                        Concluir treino
+                    </MudButton>
+                }
+            </MudStack>
+        </div>
+    }
+</PermissionView>
+
+@code {
+    [Parameter] public Guid WorkoutId { get; set; }
+
+    private WorkoutDetailDto? _workout;
+    private List<WorkoutItemDto> _items = [];
+    private Dictionary<Guid, string> _exerciseNames = new();
+    private Guid _sessionId;
+    private int _current;
+    private int _doneUnits;
+    private int _restRemaining;
+    private int _restTotal;
+    private bool _finished;
+    private bool _loading = true;
+    private bool _busy;
+    private System.Timers.Timer? _timer;
+
+    private WorkoutItemDto? _next => _current + 1 < _items.Count ? _items[_current + 1] : null;
+
+    private int OverallPercent =>
+        _items.Count == 0 ? 0 : (int)Math.Round(100.0 * _current / _items.Count);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var exercises = await Api.ListExercisesAsync(null, CancellationToken.None);
+            _exerciseNames = exercises.ToDictionary(e => e.Id, e => e.Name);
+            _workout = await Api.GetWorkoutAsync(WorkoutId, CancellationToken.None);
+            _items = _workout?.Items.OrderBy(i => i.Order).ToList() ?? [];
+
+            if (_items.Count > 0)
+            {
+                _sessionId = await Api.StartSessionAsync(WorkoutId, CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao iniciar execução: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static int TotalUnits(WorkoutItemDto i) => i.Rounds is > 0 ? i.Rounds.Value : Math.Max(1, i.Sets);
+
+    private static string UnitLabel(WorkoutItemDto i) =>
+        i.Rounds is > 0
+            ? $"{i.WorkSeconds ?? 0}s trabalho · {i.IntervalRestSeconds ?? 0}s intervalo"
+            : $"{i.Reps} repetições";
+
+    private void CompleteUnit()
+    {
+        var item = _items[_current];
+        if (_doneUnits >= TotalUnits(item))
+        {
+            return;
+        }
+
+        _doneUnits++;
+
+        // Start the rest/interval countdown between units.
+        int rest = item.Rounds is > 0 ? (item.IntervalRestSeconds ?? 0) : item.RestSeconds;
+        if (_doneUnits < TotalUnits(item) && rest > 0)
+        {
+            StartRest(rest);
+        }
+    }
+
+    private void StartRest(int seconds)
+    {
+        _restTotal = seconds;
+        _restRemaining = seconds;
+        _timer?.Dispose();
+        _timer = new System.Timers.Timer(1000);
+        _timer.Elapsed += async (_, _) =>
+        {
+            _restRemaining--;
+            if (_restRemaining <= 0)
+            {
+                _restRemaining = 0;
+                _timer?.Dispose();
+                _timer = null;
+            }
+
+            await InvokeAsync(StateHasChanged);
+        };
+        _timer.AutoReset = true;
+        _timer.Start();
+    }
+
+    private void SkipRest()
+    {
+        _timer?.Dispose();
+        _timer = null;
+        _restRemaining = 0;
+    }
+
+    private async Task NextExercise()
+    {
+        _busy = true;
+        try
+        {
+            await RecordCurrentAsync();
+            _current++;
+            _doneUnits = 0;
+            SkipRest();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task Finish()
+    {
+        _busy = true;
+        try
+        {
+            await RecordCurrentAsync();
+            await Api.CompleteSessionAsync(_sessionId, new CompleteSessionRequest(null, null), CancellationToken.None);
+            _finished = true;
+            SkipRest();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao concluir treino: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Best-effort per-exercise log so the weekly report has performed sets/reps.</summary>
+    private async Task RecordCurrentAsync()
+    {
+        if (_sessionId == Guid.Empty)
+        {
+            return;
+        }
+
+        var item = _items[_current];
+        try
+        {
+            await Api.UpsertExerciseNoteAsync(_sessionId, new UpsertExerciseNoteRequest(
+                item.Id, item.ExerciseId, LoadKg: null, PainFlag: false, PainNote: null,
+                Comment: null, PerformedSets: _doneUnits, PerformedReps: item.Reps), CancellationToken.None);
+        }
+        catch { /* logging is best-effort; don't block the flow */ }
+    }
+
+    private void BackToWorkout() => Nav.NavigateTo($"/workouts/{WorkoutId}");
+
+    private string ExerciseName(Guid id) => _exerciseNames.TryGetValue(id, out var n) ? n : "Exercício";
+
+    private static string Prescription(WorkoutItemDto i) =>
+        i.Rounds is > 0
+            ? $"{i.Rounds} rounds · {i.WorkSeconds ?? 0}s / {i.IntervalRestSeconds ?? 0}s"
+            : $"{i.Sets} × {i.Reps} · {i.RestSeconds}s descanso";
+
+    private static string FormatTime(int seconds) => $"{seconds / 60}:{seconds % 60:D2}";
+
+    private string TimerStyle()
+    {
+        int idlePct = _restRemaining == 0 ? 100 : 0;
+        int pct = _restTotal > 0 && _restRemaining > 0
+            ? (int)Math.Round(100.0 * (_restTotal - _restRemaining) / _restTotal)
+            : idlePct;
+        return "width:200px;aspect-ratio:1;margin:8px auto;border-radius:50%;display:grid;place-items:center;"
+             + $"background:conic-gradient(var(--st-volt) 0 {pct}%, var(--mud-palette-lines-default) {pct}% 100%);"
+             + "position:relative;";
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

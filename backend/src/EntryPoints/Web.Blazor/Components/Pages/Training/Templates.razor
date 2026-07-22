@@ -1,24 +1,40 @@
 @page "/templates"
+@rendermode InteractiveServer
 @attribute [Authorize]
 @using Web.Blazor.Training
 @inject ITrainingApiClient Api
+@inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
 <PageTitle>Modelos de treino</PageTitle>
 
 <PermissionView Permission="template.read">
-    <MudText Typo="Typo.h4" Class="mb-3">Modelos de treino</MudText>
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h4">Modelos de treino</MudText>
+        <MudSpacer />
+        <PermissionView Permission="template.write">
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@(() => Nav.NavigateTo("/templates/new"))">Novo modelo</MudButton>
+        </PermissionView>
+    </MudStack>
 
-    <MudTable Items="_templates" Hover Loading="_loading" Dense Breakpoint="Breakpoint.Sm">
+    <MudTable Items="_templates" Hover Loading="_loading" Dense Breakpoint="Breakpoint.Sm"
+              OnRowClick="OnRowClick" T="WorkoutTemplateListItemDto" Style="cursor:pointer">
         <HeaderContent>
             <MudTh>Nome</MudTh>
-            <MudTh>Categoria</MudTh>
+            <MudTh>Modalidade</MudTh>
             <MudTh>Exercícios</MudTh>
             <MudTh>Padrão</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Nome">@context.Name</MudTd>
-            <MudTd DataLabel="Categoria">@(context.Category?.ToString() ?? "-")</MudTd>
+            <MudTd DataLabel="Modalidade">
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="st-cat-chip"
+                         Style="@($"color:{CategoryDisplay.Color(context.Category)};border-color:{CategoryDisplay.Color(context.Category)}")">
+                    @CategoryDisplay.Label(context.Category)
+                </MudChip>
+            </MudTd>
             <MudTd DataLabel="Exercícios">@context.ItemCount</MudTd>
             <MudTd DataLabel="Padrão">
                 @if (context.IsSystemDefault)
@@ -49,5 +65,19 @@
         {
             _loading = false;
         }
+    }
+
+    private async Task OnRowClick(TableRowClickEventArgs<WorkoutTemplateListItemDto> args)
+    {
+        if (args.Item is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<Dialogs.TemplateDetailDialog>
+        {
+            { x => x.TemplateId, args.Item.Id },
+        };
+        await DialogService.ShowAsync<Dialogs.TemplateDetailDialog>(args.Item.Name, parameters);
     }
 }

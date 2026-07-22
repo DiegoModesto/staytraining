@@ -1,0 +1,111 @@
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudSelect T="Guid" @bind-Value="_exerciseId" Label="Exercício" Required Class="mb-3"
+                   AnchorOrigin="Origin.BottomCenter">
+            @foreach (var e in _exercises)
+            {
+                <MudSelectItem T="Guid" Value="e.Id">@e.Name (@Label(e.Category))</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudTextField @bind-Value="_section" Label="Seção (ex.: Costas, Aquecimento)" Class="mb-3" />
+
+        <MudStack Row Class="mb-1">
+            <MudNumericField @bind-Value="_sets" Label="Séries" Min="1" Max="20" />
+            <MudNumericField @bind-Value="_reps" Label="Reps" Min="1" Max="100" />
+            <MudNumericField @bind-Value="_rest" Label="Descanso (s)" Min="0" Max="600" />
+        </MudStack>
+
+        @if (IsIntervalBased)
+        {
+            <MudAlert Severity="Severity.Info" Dense Class="my-2">
+                Modalidade intervalada — informe trabalho/intervalo/rounds.
+            </MudAlert>
+            <MudStack Row>
+                <MudNumericField @bind-Value="_work" Label="Trabalho (s)" Min="0" Max="600" />
+                <MudNumericField @bind-Value="_intervalRest" Label="Intervalo (s)" Min="0" Max="600" />
+                <MudNumericField @bind-Value="_rounds" Label="Rounds" Min="1" Max="30" />
+            </MudStack>
+        }
+
+        <MudTextField @bind-Value="_comment" Label="Comentário do professor (opcional)" Lines="2" Class="mt-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">
+            Adicionar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    private IReadOnlyList<ExerciseListItemDto> _exercises = [];
+    private Guid _exerciseId;
+    private string? _section;
+    private int _sets = 3;
+    private int _reps = 12;
+    private int _rest = 60;
+    private int? _work;
+    private int? _intervalRest;
+    private int? _rounds;
+    private string? _comment;
+
+    private bool IsIntervalBased =>
+        _exercises.FirstOrDefault(e => e.Id == _exerciseId) is { IsAerobic: true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _exercises = await Api.ListExercisesAsync(null, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar exercícios: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    /// <summary>Returns the assembled prescription item to the caller (does not persist).</summary>
+    private void Submit()
+    {
+        if (_exerciseId == Guid.Empty)
+        {
+            Snackbar.Add("Selecione um exercício.", Severity.Warning);
+            return;
+        }
+
+        // Order 0 → callers that append to a workout let the API assign the next order.
+        var item = new WorkoutItemInput(
+            _exerciseId, 0, _section, _sets, _reps, _rest,
+            DurationSeconds: null,
+            WorkSeconds: IsIntervalBased ? _work : null,
+            IntervalRestSeconds: IsIntervalBased ? _intervalRest : null,
+            Rounds: IsIntervalBased ? _rounds : null,
+            ProfessorComment: _comment);
+
+        Dialog.Close(DialogResult.Ok(new PickedItem(item, ExerciseName())));
+    }
+
+    private string ExerciseName() =>
+        _exercises.FirstOrDefault(e => e.Id == _exerciseId)?.Name ?? "Exercício";
+
+    /// <summary>The chosen item plus the exercise display name (so builders can list it without a lookup).</summary>
+    public sealed record PickedItem(WorkoutItemInput Item, string ExerciseName);
+
+    private static string Label(ExerciseCategory c) => c switch
+    {
+        ExerciseCategory.Musculacao => "Musculação",
+        ExerciseCategory.Funcional => "Funcional",
+        ExerciseCategory.Boxe => "Boxe",
+        ExerciseCategory.Aerobico => "Aeróbico",
+        _ => c.ToString(),
+    };
+}

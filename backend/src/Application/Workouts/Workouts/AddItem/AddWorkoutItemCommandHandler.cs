@@ -31,9 +31,8 @@ public sealed class AddWorkoutItemCommandHandler(
         }
 
         WorkoutItemInput input = command.Item;
-        int order = input.Order > 0
-            ? input.Order
-            : (workout.Items.Count == 0 ? 1 : workout.Items.Max(i => i.Order) + 1);
+        int nextOrder = workout.Items.Count == 0 ? 1 : workout.Items.Max(i => i.Order) + 1;
+        int order = input.Order > 0 ? input.Order : nextOrder;
 
         var item = new WorkoutItem
         {

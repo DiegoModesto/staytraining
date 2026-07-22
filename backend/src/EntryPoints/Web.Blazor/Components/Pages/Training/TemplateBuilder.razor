@@ -1,0 +1,131 @@
+@page "/templates/new"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Novo modelo</PageTitle>
+
+<PermissionView Permission="template.write">
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Nav.NavigateTo("/templates"))" />
+        <MudText Typo="Typo.h4">Novo modelo</MudText>
+    </MudStack>
+
+    <MudGrid>
+        <MudItem xs="12" md="5">
+            <MudPaper Class="pa-4" Outlined Elevation="0">
+                <MudTextField @bind-Value="_name" Label="Nome do modelo" Required MaxLength="200" Class="mb-3" />
+                <MudSelect T="ExerciseCategory?" @bind-Value="_category" Label="Modalidade" Clearable Class="mb-3">
+                    <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Musculacao)">Musculação</MudSelectItem>
+                    <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Funcional)">Funcional</MudSelectItem>
+                    <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Boxe)">Boxe</MudSelectItem>
+                    <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Aerobico)">Aeróbico</MudSelectItem>
+                </MudSelect>
+                <MudTextField @bind-Value="_notes" Label="Notas do criador (opcional)" Lines="2" Class="mb-3" />
+                <MudButton FullWidth Color="Color.Primary" Variant="Variant.Filled"
+                           Disabled="@(_busy || _items.Count == 0 || string.IsNullOrWhiteSpace(_name))"
+                           StartIcon="@Icons.Material.Filled.Save" OnClick="Save">
+                    Salvar modelo (@_items.Count)
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="7">
+            <MudPaper Class="pa-4" Outlined Elevation="0">
+                <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+                    <MudText Typo="Typo.subtitle1">Exercícios do modelo</MudText>
+                    <MudSpacer />
+                    <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" OnClick="AddItem">Adicionar</MudButton>
+                </MudStack>
+
+                @if (_items.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">Adicione exercícios para compor o modelo.</MudAlert>
+                }
+                else
+                {
+                    @for (int idx = 0; idx < _items.Count; idx++)
+                    {
+                        var i = idx;
+                        var entry = _items[i];
+                        <MudPaper Outlined Elevation="0" Class="pa-3 mb-2 d-flex align-center">
+                            <MudText Typo="Typo.h6" Style="width:34px;text-align:center">@(i + 1)</MudText>
+                            <div style="flex:1">
+                                <MudText Typo="Typo.subtitle1">@entry.ExerciseName</MudText>
+                                <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)">@Prescription(entry.Item)</MudText>
+                            </div>
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small"
+                                           Disabled="@(i == 0)" OnClick="() => Move(i, -1)" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small"
+                                           Disabled="@(i == _items.Count - 1)" OnClick="() => Move(i, 1)" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="() => _items.RemoveAt(i)" />
+                        </MudPaper>
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</PermissionView>
+
+@code {
+    private string _name = string.Empty;
+    private ExerciseCategory? _category;
+    private string? _notes;
+    private bool _busy;
+    private readonly List<Dialogs.AddWorkoutItemDialog.PickedItem> _items = [];
+
+    private static string Prescription(WorkoutItemInput i) =>
+        i.Rounds is > 0
+            ? $"{i.Rounds} rounds · {i.WorkSeconds ?? 0}s / {i.IntervalRestSeconds ?? 0}s"
+            : $"{i.Sets} × {i.Reps} · {i.RestSeconds}s descanso";
+
+    private async Task AddItem()
+    {
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AddWorkoutItemDialog>("Adicionar exercício");
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled && r.Data is Dialogs.AddWorkoutItemDialog.PickedItem picked)
+        {
+            _items.Add(picked);
+        }
+    }
+
+    private void Move(int index, int delta)
+    {
+        int target = index + delta;
+        if (target < 0 || target >= _items.Count)
+        {
+            return;
+        }
+
+        (_items[index], _items[target]) = (_items[target], _items[index]);
+    }
+
+    private async Task Save()
+    {
+        _busy = true;
+        try
+        {
+            var items = _items.Select((e, idx) => new TemplateItemInput(
+                e.Item.ExerciseId, idx + 1, e.Item.SectionLabel, e.Item.Sets, e.Item.Reps, e.Item.RestSeconds,
+                e.Item.DurationSeconds, e.Item.WorkSeconds, e.Item.IntervalRestSeconds, e.Item.Rounds,
+                CreatorNotes: e.Item.ProfessorComment)).ToList();
+
+            var request = new CreateWorkoutTemplateRequest(
+                _name.Trim(), null, _category, IsSystemDefault: false, _notes, items);
+
+            await Api.CreateTemplateAsync(request, CancellationToken.None);
+            Snackbar.Add("Modelo criado.", Severity.Success);
+            Nav.NavigateTo("/templates");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao salvar modelo: {ex.Message}", Severity.Error);
+            _busy = false;
+        }
+    }
+}

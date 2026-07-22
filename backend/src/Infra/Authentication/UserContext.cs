@@ -6,13 +6,22 @@ namespace Infra.Authentication;
 
 internal sealed class UserContext(IHttpContextAccessor httpContextAccessor) : IUserContext
 {
-    public Guid UserId =>
-        httpContextAccessor
-            .HttpContext?
-            .User
-            .FindFirstValue(ClaimTypes.NameIdentifier) is { } userId
-            ? Guid.Parse(userId)
-            : throw new InvalidClaimException("User id is unavailable");
+    public Guid UserId
+    {
+        get
+        {
+            // OpenIddict introspection surfaces the subject as the standard "sub" claim; it does
+            // not remap it to the legacy ClaimTypes.NameIdentifier. Accept either so tokens issued
+            // by Auth.API (sub) and any legacy/JWT path (NameIdentifier) both resolve.
+            ClaimsPrincipal? user = httpContextAccessor.HttpContext?.User;
+            string? userId = user?.FindFirstValue("sub")
+                ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            return Guid.TryParse(userId, out Guid id)
+                ? id
+                : throw new InvalidClaimException("User id is unavailable");
+        }
+    }
 
     public Guid? TenantId
     {

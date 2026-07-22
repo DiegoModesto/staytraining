@@ -1,0 +1,152 @@
+@page "/students/{StudentId:guid}/schedule"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Agenda semanal</PageTitle>
+
+<PermissionView Permission="workout.read">
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Nav.NavigateTo($"/students/{StudentId}"))" />
+        <MudText Typo="Typo.h4">Agenda</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="@(() => Shift(-7))" Disabled="_loading" />
+        <MudText Typo="Typo.subtitle1" Style="min-width:190px;text-align:center">
+            @_weekStart.ToString("dd/MM") – @_weekStart.AddDays(6).ToString("dd/MM/yyyy")
+        </MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="@(() => Shift(7))" Disabled="_loading" />
+        <MudButton StartIcon="@Icons.Material.Filled.Today" OnClick="GoToday" Disabled="_loading">Hoje</MudButton>
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate Color="Color.Primary" />
+    }
+    else
+    {
+        <div class="st-week-grid">
+            @for (int d = 0; d < 7; d++)
+            {
+                var day = _weekStart.AddDays(d);
+                var items = _byDay.TryGetValue(day, out var list) ? list : [];
+                var isToday = day == DateOnly.FromDateTime(DateTime.Today);
+                <MudPaper Outlined Elevation="0" Class="pa-3" Style="@(isToday ? "border-color:var(--st-volt)" : "")">
+                        <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+                            <div style="flex:1">
+                                <MudText Typo="Typo.overline" Style="color:var(--mud-palette-text-secondary)">@DayName(day.DayOfWeek)</MudText>
+                                <MudText Typo="Typo.h6" Style="@(isToday ? "color:var(--st-volt)" : "")">@day.ToString("dd/MM")</MudText>
+                            </div>
+                            <PermissionView Permission="session.write">
+                                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                               OnClick="() => OpenSchedule(day)" />
+                            </PermissionView>
+                        </MudStack>
+
+                        @if (items.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)">—</MudText>
+                        }
+                        else
+                        {
+                            @foreach (var it in items)
+                            {
+                                <MudButton FullWidth Class="mb-1 justify-start" Variant="Variant.Outlined"
+                                           StartIcon="@Icons.Material.Filled.FitnessCenter"
+                                           OnClick="@(() => Nav.NavigateTo($"/workouts/{it.WorkoutId}"))">
+                                    @it.WorkoutName
+                                </MudButton>
+                            }
+                        }
+                    </MudPaper>
+            }
+        </div>
+    }
+</PermissionView>
+
+@code {
+    [Parameter] public Guid StudentId { get; set; }
+
+    private Guid _ownerUserId;
+    private DateOnly _weekStart = MondayOf(DateOnly.FromDateTime(DateTime.Today));
+    private Dictionary<DateOnly, List<WeekScheduleItemDto>> _byDay = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var student = await Api.GetStudentAsync(StudentId, CancellationToken.None);
+            _ownerUserId = student?.UserId ?? Guid.Empty;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar aluno: {ex.Message}", Severity.Error);
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var items = await Api.GetWeekScheduleAsync(_weekStart, _ownerUserId, CancellationToken.None);
+            _byDay = items
+                .GroupBy(i => i.Date)
+                .ToDictionary(g => g.Key, g => g.OrderBy(x => x.WorkoutName).ToList());
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar agenda: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Shift(int days)
+    {
+        _weekStart = _weekStart.AddDays(days);
+        await LoadAsync();
+    }
+
+    private async Task GoToday()
+    {
+        _weekStart = MondayOf(DateOnly.FromDateTime(DateTime.Today));
+        await LoadAsync();
+    }
+
+    private async Task OpenSchedule(DateOnly day)
+    {
+        var parameters = new DialogParameters<Dialogs.ScheduleWorkoutDialog>
+        {
+            { x => x.OwnerStudentId, _ownerUserId },
+            { x => x.Date, day },
+        };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.ScheduleWorkoutDialog>("Agendar treino", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private static string DayName(DayOfWeek d) => d switch
+    {
+        DayOfWeek.Monday => "Segunda",
+        DayOfWeek.Tuesday => "Terça",
+        DayOfWeek.Wednesday => "Quarta",
+        DayOfWeek.Thursday => "Quinta",
+        DayOfWeek.Friday => "Sexta",
+        DayOfWeek.Saturday => "Sábado",
+        _ => "Domingo",
+    };
+
+    private static DateOnly MondayOf(DateOnly d) => d.AddDays(-((int)d.DayOfWeek + 6) % 7);
+}

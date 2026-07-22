@@ -59,12 +59,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
-        foreach (var entry in ChangeTracker.Entries<IHasUpdatedAt>())
+        foreach (var entry in ChangeTracker.Entries<IHasUpdatedAt>()
+            .Where(e => e.State is EntityState.Added or EntityState.Modified))
         {
-            if (entry.State is EntityState.Added or EntityState.Modified)
-            {
-                entry.Entity.UpdatedAt = now;
-            }
+            entry.Entity.UpdatedAt = now;
         }
     }
 }

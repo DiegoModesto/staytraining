@@ -465,6 +465,16 @@ Cross-cutting RabbitMQ infrastructure lives here so all four entrypoints share i
   - `OpenIddictClientSeedHostedService` — seeds the BFF, Web.API, and Gateway OpenIddict applications using the `OPENIDDICT_*_SECRET` env vars.
   - `PermissionSeedHostedService` — seeds default roles + permissions into `auth_db`.
 - Architecture rules also cover `Auth.Domain` / `Auth.Application` / `Auth.Infra` — see `tests/Web.API.IntegrationTests/Architecture/ArchitectureTests.cs`.
+- In **Development** the `AuthDbContext` migrations are applied automatically on startup (`Program.cs`). Production applies migrations out-of-band.
+
+#### Stand-alone local login (no Microsoft Entra)
+
+`/connect/authorize` normally federates to Entra. For local dev without Azure, a **Development-only** local login kicks in **when `Entra:*` config is empty**:
+
+- `AddDevEntraLogin` registers a stand-in scheme under the same name (`"Entra"`) via `DevEntraAuthenticationHandler` — instead of redirecting to Azure it redirects to a local `/dev-login` page. `AuthorizeEndpoint` is unchanged.
+- `DevLoginEndpoints` (mapped in `Program.cs` **only** in Development — never via `IEndpoint` auto-registration, so it can't exist in a prod build) renders a page to pick a mock identity, then signs the `tid/oid/preferred_username/name` claims into the cookie scheme.
+- `DevIdentitySeedHostedService` (registered only in Development) seeds a local tenant + the mock users from `DevIdentityDefaults`. **IDs are fixed and aligned with the Web.API training seed** (`Infra.Database.SeedDataHostedService`): tenant `11111111-…`, professor Diego `22222222-…` (`PermissionCodes.TeacherRole`), student Rita `33333333-…` (`PermissionCodes.StudentRole`) — so a logged-in mock user's token carries a `tenant_id`/`sub` that match the seeded training data and the app shows real data end-to-end.
+- **Both gates (env `Development` AND `Entra:*` empty) are mandatory** — the dev login is an authentication bypass and must never load in production or when real Entra is configured.
 
 ### Web.Blazor (`src/EntryPoints/Web.Blazor`)
 
@@ -535,6 +545,8 @@ Local dev: point an OpenTelemetry collector at `http://localhost:4317` and set `
 | `CS1061: 'Result<T>' does not contain 'Match'` | Missing `using Web.API.Extensions;` | Add the import |
 | OpenIddict reference token returns `active=false` on introspection | Token expired or resource server client not seeded | Check token TTL and that the resource server client (`web-api`/`gateway`) is correctly seeded by `OpenIddictClientSeedHostedService` |
 | Entra `tid` claim missing on principal | Authority misconfigured or strict issuer validation | Verify `Entra:Authority` and that `ValidateIssuer = false` (we accept multi-tenant tokens and validate via our `Tenants` table) |
+| `No authentication handler is registered for the scheme 'Entra'` at `/connect/authorize` | Real Entra not configured and the dev login stand-in didn't register | Local dev: leave `Entra:*` empty **and** run in `Development` — the stand-alone `/dev-login` registers automatically (see §11). If you see this in Development, confirm `ASPNETCORE_ENVIRONMENT=Development` and that `Entra:*` is empty |
+| Logged in via `/dev-login` but the app shows no data / returns 403 | Token `tenant_id`/`sub` don't match the seeded data, or the mock role lacks the permission | Dev mock IDs are fixed in `DevIdentityDefaults` to match the Web.API seed; if you changed them, re-align. 403 means the mock role's permission set (`TeacherRole`/`StudentRole`) doesn't include the required `permission` |
 | Auth.API fails to start with `OpenIddict has not been registered as a default identifier generator` | Migration not applied | Apply migrations — the `InitialAuthSchema` migration includes the OpenIddict EF tables |
 | TestServer cannot reach Entra over HTTPS | OIDC discovery requires HTTPS by default | Set `OpenIdConnectOptions.RequireHttpsMetadata = false` in dev/test only |
 | Gateway returns 401 for valid token | Introspection client not seeded or wrong secret | Check `Auth:IntrospectionClientId/Secret` match a seeded resource server with `Endpoints.Introspection` permission |

@@ -1,0 +1,85 @@
+/* StayTraining "VOLT" — polish layered on top of the MudTheme (loaded after MudBlazor.min.css). */
+
+:root {
+    --st-volt: #C7F536;
+    --st-cat-musc: #4EA8FF;
+    --st-cat-func: #2FD37A;
+    --st-cat-boxe: #FF4757;
+    --st-cat-aero: #FFB020;
+}
+
+/* Uppercase, tight display headings — the athletic voice of the brand. */
+.mud-typography-h1,
+.mud-typography-h2,
+.mud-typography-h3,
+.mud-typography-h4,
+.mud-typography-h5 {
+    text-transform: uppercase;
+}
+
+/* Brand lockup in the app bar. */
+.st-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.st-brand .st-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    background: var(--st-volt);
+    color: #0C0E12;
+    font-family: "Archivo", sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    box-shadow: 0 6px 18px -6px rgba(199, 245, 54, .7);
+}
+
+.st-brand .st-name {
+    font-family: "Archivo", sans-serif;
+    font-weight: 800;
+    font-size: 19px;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+.st-brand .st-name b {
+    color: var(--st-volt);
+    font-weight: 800;
+}
+
+/* Category chip helper (used by Category.For color inline). */
+.st-cat-chip {
+    font-family: "Archivo", sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+/* Give primary (volt) filled buttons a subtle energy glow. */
+.mud-button-filled.mud-button-filled-primary {
+    box-shadow: 0 6px 20px -8px rgba(199, 245, 54, .55);
+}
+
+/* Weekly schedule: 7 equal day columns on desktop, collapsing on narrow screens. */
+.st-week-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+@media (max-width: 1100px) {
+    .st-week-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 700px) {
+    .st-week-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 440px) {
+    .st-week-grid { grid-template-columns: 1fr; }
+}

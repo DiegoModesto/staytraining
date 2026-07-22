@@ -1,0 +1,85 @@
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (_workouts.Count == 0 && !_loading)
+        {
+            <MudAlert Severity="Severity.Info">Este aluno ainda não tem treinos. Monte um treino antes de agendar.</MudAlert>
+        }
+        else
+        {
+            <MudSelect T="Guid" @bind-Value="_workoutId" Label="Treino" Required Class="mb-3"
+                       AnchorOrigin="Origin.BottomCenter">
+                @foreach (var w in _workouts)
+                {
+                    <MudSelectItem T="Guid" Value="w.Id">@w.Name (@w.ItemCount ex.)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudDatePicker @bind-Date="_date" Label="Dia" DateFormat="dd/MM/yyyy" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="@(_busy || _workouts.Count == 0)" OnClick="Submit">Agendar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    /// <summary>Student's user id (workout owner) used to list schedulable workouts.</summary>
+    [Parameter] public Guid OwnerStudentId { get; set; }
+
+    /// <summary>Preselected day.</summary>
+    [Parameter] public DateOnly Date { get; set; }
+
+    private IReadOnlyList<WorkoutListItemDto> _workouts = [];
+    private Guid _workoutId;
+    private DateTime? _date;
+    private bool _loading = true;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _date = Date.ToDateTime(TimeOnly.MinValue);
+        try
+        {
+            _workouts = await Api.ListWorkoutsAsync(OwnerStudentId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar treinos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (_workoutId == Guid.Empty || _date is null)
+        {
+            Snackbar.Add("Selecione o treino e o dia.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var request = new ScheduleWorkoutRequest(_workoutId, DateOnly.FromDateTime(_date.Value));
+            await Api.ScheduleWorkoutAsync(request, CancellationToken.None);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao agendar: {ex.Message}", Severity.Error);
+            _busy = false;
+        }
+    }
+}

@@ -17,4 +17,24 @@ public interface ITrainingApiClient
 
     Task<IReadOnlyList<WorkoutListItemDto>> ListWorkoutsAsync(Guid? ownerStudentId, CancellationToken ct);
     Task<Guid> CreateWorkoutFromTemplateAsync(CreateWorkoutFromTemplateRequest request, CancellationToken ct);
+
+    // Workout building (custom / item-by-item)
+    Task<Guid> CreateWorkoutAsync(CreateWorkoutRequest request, CancellationToken ct);
+    Task<WorkoutDetailDto?> GetWorkoutAsync(Guid id, CancellationToken ct);
+    Task<Guid> AddWorkoutItemAsync(Guid workoutId, WorkoutItemInput item, CancellationToken ct);
+    Task RemoveWorkoutItemAsync(Guid workoutId, Guid itemId, CancellationToken ct);
+    Task ReorderWorkoutItemsAsync(Guid workoutId, IReadOnlyList<Guid> orderedItemIds, CancellationToken ct);
+
+    // Templates (builder)
+    Task<WorkoutTemplateDetailDto?> GetTemplateAsync(Guid id, CancellationToken ct);
+    Task<Guid> CreateTemplateAsync(CreateWorkoutTemplateRequest request, CancellationToken ct);
+
+    // Execution: sessions, notes, schedule, report
+    Task<Guid> StartSessionAsync(Guid workoutId, CancellationToken ct);
+    Task CompleteSessionAsync(Guid sessionId, CompleteSessionRequest request, CancellationToken ct);
+    Task<Guid> UpsertExerciseNoteAsync(Guid sessionId, UpsertExerciseNoteRequest request, CancellationToken ct);
+    Task<IReadOnlyList<ExerciseNoteDto>> GetSessionNotesAsync(Guid sessionId, CancellationToken ct);
+    Task<IReadOnlyList<WeekScheduleItemDto>> GetWeekScheduleAsync(DateOnly weekStart, Guid? studentId, CancellationToken ct);
+    Task<Guid> ScheduleWorkoutAsync(ScheduleWorkoutRequest request, CancellationToken ct);
+    Task<WeeklyReportDto?> GetWeeklyReportAsync(DateOnly weekStart, Guid? studentId, CancellationToken ct);
 }

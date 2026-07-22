@@ -122,7 +122,19 @@ internal sealed class AuthorizeEndpoint : IEndpoint
         }
 
         var claimsPrincipal = new ClaimsPrincipal(identity);
-        claimsPrincipal.SetScopes(request.GetScopes());
+        System.Collections.Immutable.ImmutableArray<string> scopes = request.GetScopes();
+        claimsPrincipal.SetScopes(scopes);
+
+        // Attach resource-server audiences granted by the api scope. Two distinct checks must pass,
+        // so the aud set is the union of both naming schemes:
+        //   • Web.API/Gateway token validation uses AddAudiences("api:web"/"api:auth").
+        //   • OpenIddict only reports active=true on /connect/introspect when the introspecting
+        //     client's id ("web-api"/"gateway") is among the token's audiences.
+        // Without both, the token is either rejected ("no audience") or introspected as inactive.
+        if (scopes.Contains("api:web"))
+        {
+            claimsPrincipal.SetResources("api:web", "api:auth", "web-api", "gateway");
+        }
 
         await WriteAuditAsync(db, tenantR.Value.Id, userR.Value,
             AuthAuditEventType.LoginSucceeded, ip, userAgent,

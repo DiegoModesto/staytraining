@@ -1,0 +1,221 @@
+@page "/workouts/{WorkoutId:guid}"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Montagem de treino</PageTitle>
+
+<PermissionView Permission="workout.read">
+    @if (_workout is null)
+    {
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate />
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning">Treino não encontrado.</MudAlert>
+        }
+    }
+    else
+    {
+        <MudStack Row AlignItems="AlignItems.Center" Class="mb-1">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="GoBack" />
+            <MudText Typo="Typo.h4">@_workout.Name</MudText>
+            <MudChip T="string" Size="Size.Small" Class="st-cat-chip"
+                     Style="@($"color:{CategoryDisplay.Color(_workout.Category)};border-color:{CategoryDisplay.Color(_workout.Category)}")"
+                     Variant="Variant.Outlined">@CategoryDisplay.Label(_workout.Category)</MudChip>
+            <MudSpacer />
+            <MudButton StartIcon="@Icons.Material.Filled.PlayArrow" Color="Color.Primary" Variant="Variant.Filled"
+                       Disabled="_workout.Items.Count == 0" OnClick="Run">Executar</MudButton>
+        </MudStack>
+        @if (!string.IsNullOrWhiteSpace(_workout.Description))
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">@_workout.Description</MudText>
+        }
+
+        <MudPaper Class="pa-3 mb-3" Elevation="0" Outlined>
+            <MudStack Row AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.subtitle1">@_workout.Items.Count exercício(s)</MudText>
+                <MudSpacer />
+                <PermissionView Permission="workout.write">
+                    <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary"
+                               OnClick="AddItem">Adicionar exercício</MudButton>
+                </PermissionView>
+            </MudStack>
+        </MudPaper>
+
+        @if (_workout.Items.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">Treino vazio. Adicione exercícios para montar a ficha.</MudAlert>
+        }
+        else
+        {
+            <MudList T="WorkoutItemDto">
+                @{ var ordered = _workout.Items.OrderBy(i => i.Order).ToList(); }
+                @for (int idx = 0; idx < ordered.Count; idx++)
+                {
+                    var item = ordered[idx];
+                    var position = idx;
+                    <MudPaper Class="pa-3 mb-2" Outlined Elevation="0">
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
+                            <MudText Typo="Typo.h6" Style="width:34px;text-align:center">@(idx + 1)</MudText>
+                            <div style="flex:1">
+                                <MudText Typo="Typo.subtitle1">@ExerciseName(item.ExerciseId)</MudText>
+                                <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)">
+                                    @(string.IsNullOrWhiteSpace(item.SectionLabel) ? "" : $"{item.SectionLabel} · ")@Prescription(item)
+                                </MudText>
+                                @if (!string.IsNullOrWhiteSpace(item.ProfessorComment))
+                                {
+                                    <MudText Typo="Typo.caption">💬 @item.ProfessorComment</MudText>
+                                }
+                            </div>
+                            <PermissionView Permission="workout.write">
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small"
+                                               Disabled="@(position == 0 || _busy)" OnClick="() => Move(position, -1)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small"
+                                               Disabled="@(position == ordered.Count - 1 || _busy)" OnClick="() => Move(position, 1)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                               Disabled="_busy" OnClick="() => Remove(item.Id)" />
+                            </PermissionView>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudList>
+        }
+    }
+</PermissionView>
+
+@code {
+    [Parameter] public Guid WorkoutId { get; set; }
+
+    private WorkoutDetailDto? _workout;
+    private Dictionary<Guid, string> _exerciseNames = new();
+    private bool _loading = true;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var exercises = await Api.ListExercisesAsync(null, CancellationToken.None);
+            _exerciseNames = exercises.ToDictionary(e => e.Id, e => e.Name);
+        }
+        catch { /* names are best-effort */ }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _workout = await Api.GetWorkoutAsync(WorkoutId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar treino: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string ExerciseName(Guid id) =>
+        _exerciseNames.TryGetValue(id, out var name) ? name : "Exercício";
+
+    private static string Prescription(WorkoutItemDto i)
+    {
+        if (i.Rounds is > 0)
+        {
+            return $"{i.Rounds} rounds · {i.WorkSeconds ?? 0}s trabalho / {i.IntervalRestSeconds ?? 0}s intervalo";
+        }
+
+        return $"{i.Sets} × {i.Reps} · {i.RestSeconds}s descanso";
+    }
+
+    private void GoBack() => Nav.NavigateTo($"/students/{_workout?.OwnerStudentId}");
+
+    private void Run() => Nav.NavigateTo($"/workouts/{WorkoutId}/run");
+
+    private async Task AddItem()
+    {
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AddWorkoutItemDialog>("Adicionar exercício");
+        DialogResult? r = await dlg.Result;
+        if (r is null || r.Canceled || r.Data is not Dialogs.AddWorkoutItemDialog.PickedItem picked)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.AddWorkoutItemAsync(WorkoutId, picked.Item, CancellationToken.None);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao adicionar exercício: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task Remove(Guid itemId)
+    {
+        _busy = true;
+        try
+        {
+            await Api.RemoveWorkoutItemAsync(WorkoutId, itemId, CancellationToken.None);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao remover: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task Move(int position, int delta)
+    {
+        if (_workout is null)
+        {
+            return;
+        }
+
+        var ordered = _workout.Items.OrderBy(i => i.Order).Select(i => i.Id).ToList();
+        int target = position + delta;
+        if (target < 0 || target >= ordered.Count)
+        {
+            return;
+        }
+
+        (ordered[position], ordered[target]) = (ordered[target], ordered[position]);
+
+        _busy = true;
+        try
+        {
+            await Api.ReorderWorkoutItemsAsync(WorkoutId, ordered, CancellationToken.None);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao reordenar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

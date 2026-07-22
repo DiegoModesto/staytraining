@@ -2,9 +2,11 @@ using Application;
 using Asp.Versioning;
 using Asp.Versioning.Builder;
 using Infra;
+using Infra.Database;
 using Infra.Extensions;
 using Infra.Observability;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
@@ -42,6 +44,16 @@ builder.Services
     .AddOpenTelemetryObservability(builder.Configuration, serviceName: "Web.API", includeAspNetCore: true);
 
 WebApplication app = builder.Build();
+
+// Development convenience: apply pending migrations on startup so a fresh local database
+// (and the SeedDataHostedService that runs right after) works without a manual `dotnet ef
+// database update`. Production applies migrations out-of-band, never on app startup.
+if (app.Environment.IsDevelopment())
+{
+    using IServiceScope scope = app.Services.CreateScope();
+    ApplicationDbContext dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
 
 ApiVersionSet apiVersionSet = app.NewApiVersionSet()
     .HasApiVersion(new ApiVersion(1))

@@ -22,6 +22,52 @@
         "${workspaceFolder}/StayTraining.sln"
       ],
       "problemMatcher": "$msCompile"
+    },
+    {
+      // Bring up the backing services the entrypoints expect on localhost
+      // (postgres:5432, auth-postgres:5433, redis:6379, rabbitmq:5672, minio:9000, seq:5341).
+      // Idempotent — a no-op when the containers are already running.
+      "label": "docker-infra",
+      "command": "docker",
+      "type": "process",
+      "args": [
+        "compose",
+        "up",
+        "-d",
+        "postgres",
+        "auth-postgres",
+        "redis",
+        "rabbitmq",
+        "minio",
+        "seq"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      // Default preLaunchTask: build the solution, then ensure infra is up.
+      "label": "infra-up",
+      "dependsOn": ["build", "docker-infra"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      // Web.API does NOT auto-migrate (unlike Auth.API). Run this once after the
+      // Postgres container is up, before debugging Web.API against a fresh database.
+      "label": "ef-update (Web.API)",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "ef",
+        "database",
+        "update",
+        "--project",
+        "${workspaceFolder}/src/Infra",
+        "--startup-project",
+        "${workspaceFolder}/src/EntryPoints/Web.API"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
     }
   ]
 }

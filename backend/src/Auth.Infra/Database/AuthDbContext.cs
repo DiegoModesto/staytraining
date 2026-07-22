@@ -166,6 +166,19 @@ public sealed class AuthDbContext(DbContextOptions<AuthDbContext> options, ITena
         where TJoin : class
     {
         var desired = new HashSet<Guid>(desiredIds);
+
+        // Aggregates never eagerly load their membership collections (they are reconciled from the
+        // join tables, not mapped navigations). So an already-persisted aggregate that is being
+        // saved for an unrelated reason — e.g. User.RecordLogin() on sign-in — arrives here with an
+        // EMPTY in-memory collection. Treating that as "remove every membership" wipes the user's
+        // roles/groups on every login. When the collection is empty on an existing aggregate, the
+        // caller isn't managing this membership in the current unit of work, so skip reconciliation.
+        // (Callers that intentionally change memberships load them first, leaving the set non-empty.)
+        if (!isNew && desired.Count == 0)
+        {
+            return;
+        }
+
         var existing = new HashSet<Guid>();
 
         if (!isNew)

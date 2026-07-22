@@ -72,4 +72,15 @@ public static class DependencyInjection
 
         return services;
     }
+
+    /// <summary>
+    /// Registers the Development-only identity seed (local tenant + mock professor/student users)
+    /// that makes the Auth.API usable stand-alone without Microsoft Entra. Call only in Development,
+    /// after <see cref="AddAuthInfrastructure"/> so it runs after the permission catalog seed.
+    /// </summary>
+    public static IServiceCollection AddAuthDevIdentitySeeding(this IServiceCollection services)
+    {
+        services.AddHostedService<Database.DevIdentitySeedHostedService>();
+        return services;
+    }
 }

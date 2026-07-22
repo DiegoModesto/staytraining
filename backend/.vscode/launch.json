@@ -2,27 +2,72 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": ".NET Core Launch (Web.API)",
+      // Standalone identity service. Everyone else points at http://localhost:5100,
+      // so this MUST listen on 5100. Auto-applies its EF migrations on startup.
+      "name": "Auth.API (:5100)",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
+      "preLaunchTask": "infra-up",
+      "program": "${workspaceFolder}/src/EntryPoints/Auth.API/bin/Debug/net10.0/Auth.API.dll",
+      "cwd": "${workspaceFolder}/src/EntryPoints/Auth.API",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5100"
+      }
+    },
+    {
+      // HTTP API. Gateway's web-api-cluster forwards to http://localhost:5010.
+      // Requires the DB schema — run the "ef-update (Web.API)" task once first.
+      "name": "Web.API (:5010)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "infra-up",
       "program": "${workspaceFolder}/src/EntryPoints/Web.API/bin/Debug/net10.0/Web.API.dll",
-      "args": [],
       "cwd": "${workspaceFolder}/src/EntryPoints/Web.API",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5010"
+      }
+    },
+    {
+      // YARP reverse proxy. Web.Blazor points at http://localhost:5200.
+      "name": "Gateway (:5200)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "infra-up",
+      "program": "${workspaceFolder}/src/EntryPoints/Gateway/bin/Debug/net10.0/Gateway.dll",
+      "cwd": "${workspaceFolder}/src/EntryPoints/Gateway",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5200"
+      }
+    },
+    {
+      // Blazor Server BFF. Calls the Gateway (5200), OIDC client of Auth.API (5100).
+      "name": "Web.Blazor (:5002)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "infra-up",
+      "program": "${workspaceFolder}/src/EntryPoints/Web.Blazor/bin/Debug/net10.0/Web.Blazor.dll",
+      "cwd": "${workspaceFolder}/src/EntryPoints/Web.Blazor",
       "stopAtEntry": false,
       "serverReadyAction": {
         "action": "openExternally",
         "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
       },
       "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5002"
       }
     },
     {
-      "name": ".NET Core Launch (CronJobs)",
+      "name": "CronJobs",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
+      "preLaunchTask": "infra-up",
       "program": "${workspaceFolder}/src/EntryPoints/CronJobs/bin/Debug/net10.0/CronJobs.dll",
       "cwd": "${workspaceFolder}/src/EntryPoints/CronJobs",
       "stopAtEntry": false,
@@ -30,15 +75,30 @@
       "env": { "DOTNET_ENVIRONMENT": "Development" }
     },
     {
-      "name": ".NET Core Launch (Worker)",
+      "name": "Worker",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
+      "preLaunchTask": "infra-up",
       "program": "${workspaceFolder}/src/EntryPoints/Worker/bin/Debug/net10.0/Worker.dll",
       "cwd": "${workspaceFolder}/src/EntryPoints/Worker",
       "stopAtEntry": false,
       "console": "internalConsole",
       "env": { "DOTNET_ENVIRONMENT": "Development" }
+    }
+  ],
+  "compounds": [
+    {
+      // Full request path: Blazor → Gateway → (Auth.API | Web.API).
+      // Start Auth.API first so its migrations/seed finish before the others hit it.
+      "name": "Full stack (Auth + Gateway + Web.API + Blazor)",
+      "configurations": [
+        "Auth.API (:5100)",
+        "Gateway (:5200)",
+        "Web.API (:5010)",
+        "Web.Blazor (:5002)"
+      ],
+      "stopAll": true,
+      "preLaunchTask": "build"
     }
   ]
 }

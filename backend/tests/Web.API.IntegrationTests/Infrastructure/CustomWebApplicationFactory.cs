@@ -46,6 +46,13 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("RABBITMQ_HOST", "localhost");
         Environment.SetEnvironmentVariable("RABBITMQ_USER", "test");
         Environment.SetEnvironmentVariable("RABBITMQ_PASSWORD", "test");
+        // AddStorage reads config at registration time; under the minimal-hosting factory the
+        // in-memory Storage:* keys below aren't visible yet, so set the env-var equivalents (like
+        // the Auth/DB/RabbitMQ vars above) so Program.Main can boot.
+        Environment.SetEnvironmentVariable("STORAGE_ENDPOINT", "localhost:9000");
+        Environment.SetEnvironmentVariable("STORAGE_ACCESS_KEY", "test");
+        Environment.SetEnvironmentVariable("STORAGE_SECRET_KEY", "test");
+        Environment.SetEnvironmentVariable("STORAGE_BUCKET", "test-media");
         return Task.CompletedTask;
     }
 

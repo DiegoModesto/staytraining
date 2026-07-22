@@ -1,0 +1,154 @@
+@page "/students/{StudentId:guid}/report"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Relatório semanal</PageTitle>
+
+<PermissionView Permission="report.read">
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Nav.NavigateTo($"/students/{StudentId}"))" />
+        <MudText Typo="Typo.h4">Relatório semanal</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="@(() => Shift(-7))" Disabled="_loading" />
+        <MudText Typo="Typo.subtitle1" Style="min-width:190px;text-align:center">
+            @_weekStart.ToString("dd/MM") – @_weekStart.AddDays(6).ToString("dd/MM/yyyy")
+        </MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="@(() => Shift(7))" Disabled="_loading" />
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate Color="Color.Primary" />
+    }
+    else if (_report is null)
+    {
+        <MudAlert Severity="Severity.Info">Sem dados para esta semana.</MudAlert>
+    }
+    else
+    {
+        <MudGrid Class="mb-2">
+            <MudItem xs="6" md="3"><MudPaper Class="pa-4" Outlined Elevation="0">
+                <MudText Typo="Typo.h3">@_report.SessionCount</MudText>
+                <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)">Sessões</MudText>
+            </MudPaper></MudItem>
+            <MudItem xs="6" md="3"><MudPaper Class="pa-4" Outlined Elevation="0">
+                <MudText Typo="Typo.h3" Style="color:var(--st-volt)">@_report.CompletedSessionCount</MudText>
+                <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)">Concluídas</MudText>
+            </MudPaper></MudItem>
+            <MudItem xs="6" md="3"><MudPaper Class="pa-4" Outlined Elevation="0">
+                <MudText Typo="Typo.h3">@(_report.AverageRating?.ToString("0.0") ?? "—")</MudText>
+                <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)">Nota média</MudText>
+            </MudPaper></MudItem>
+            <MudItem xs="6" md="3"><MudPaper Class="pa-4" Outlined Elevation="0">
+                <MudText Typo="Typo.h3">@_report.DistinctWorkoutCount</MudText>
+                <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)">Treinos distintos</MudText>
+            </MudPaper></MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Outlined Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-2">Sessões</MudText>
+                    @if (_report.Sessions.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2">Nenhuma sessão na semana.</MudText>
+                    }
+                    else
+                    {
+                        <MudList T="WeeklyReportSessionDto" Dense>
+                            @foreach (var s in _report.Sessions.OrderBy(x => x.StartedAt))
+                            {
+                                <MudListItem T="WeeklyReportSessionDto"
+                                             Icon="@(s.CompletedAt is null ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.CheckCircle)">
+                                    @s.StartedAt.ToLocalTime().ToString("ddd dd/MM HH:mm")
+                                    @if (s.Rating is not null) { <MudChip T="string" Size="Size.Small">★ @s.Rating</MudChip> }
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@s.NoteCount notas</MudChip>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Outlined Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-2">Exercícios realizados</MudText>
+                    @if (_report.Exercises.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2">Nenhum exercício registrado.</MudText>
+                    }
+                    else
+                    {
+                        <MudList T="WeeklyReportExerciseDto" Dense>
+                            @foreach (var e in _report.Exercises)
+                            {
+                                <MudListItem T="WeeklyReportExerciseDto" Icon="@Icons.Material.Filled.FitnessCenter">
+                                    @ExerciseName(e.ExerciseId) —
+                                    @e.TimesPerformed×, @e.TotalSets séries, @e.TotalReps reps
+                                    @if (e.MaxLoadKg is not null) { <text>, máx @e.MaxLoadKg kg</text> }
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</PermissionView>
+
+@code {
+    [Parameter] public Guid StudentId { get; set; }
+
+    private WeeklyReportDto? _report;
+    private Dictionary<Guid, string> _exerciseNames = new();
+    private Guid _ownerUserId;
+    private DateOnly _weekStart = MondayOf(DateOnly.FromDateTime(DateTime.Today));
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var exercises = await Api.ListExercisesAsync(null, CancellationToken.None);
+            _exerciseNames = exercises.ToDictionary(e => e.Id, e => e.Name);
+            var student = await Api.GetStudentAsync(StudentId, CancellationToken.None);
+            _ownerUserId = student?.UserId ?? Guid.Empty;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar dados: {ex.Message}", Severity.Error);
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _report = await Api.GetWeeklyReportAsync(_weekStart, _ownerUserId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar relatório: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Shift(int days)
+    {
+        _weekStart = _weekStart.AddDays(days);
+        await LoadAsync();
+    }
+
+    private string ExerciseName(Guid id) => _exerciseNames.TryGetValue(id, out var n) ? n : "Exercício";
+
+    private static DateOnly MondayOf(DateOnly d) => d.AddDays(-((int)d.DayOfWeek + 6) % 7);
+}

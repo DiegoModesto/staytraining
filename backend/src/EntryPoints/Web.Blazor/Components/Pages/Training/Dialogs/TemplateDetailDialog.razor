@@ -1,0 +1,66 @@
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (_template is null)
+        {
+            <MudProgressCircular Indeterminate="_loading" />
+            @if (!_loading) { <MudText>Modelo não encontrado.</MudText> }
+        }
+        else
+        {
+            <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="st-cat-chip"
+                         Style="@($"color:{CategoryDisplay.Color(_template.Category)};border-color:{CategoryDisplay.Color(_template.Category)}")">
+                    @CategoryDisplay.Label(_template.Category)
+                </MudChip>
+                <MudText Typo="Typo.body2">@_template.Items.Count exercício(s)</MudText>
+            </MudStack>
+            @if (!string.IsNullOrWhiteSpace(_template.CreatorNotes))
+            {
+                <MudText Typo="Typo.body2" Class="mb-2">@_template.CreatorNotes</MudText>
+            }
+            <MudList T="TemplateItemDto" Dense>
+                @foreach (var i in _template.Items.OrderBy(x => x.Order))
+                {
+                    <MudListItem T="TemplateItemDto" Icon="@Icons.Material.Filled.FitnessCenter">
+                        @(string.IsNullOrWhiteSpace(i.SectionLabel) ? "" : $"[{i.SectionLabel}] ")
+                        @(i.Rounds is > 0
+                            ? $"{i.Rounds} rounds · {i.WorkSeconds ?? 0}s/{i.IntervalRestSeconds ?? 0}s"
+                            : $"{i.Sets} × {i.Reps} · {i.RestSeconds}s")
+                    </MudListItem>
+                }
+            </MudList>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialog.Close())">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public Guid TemplateId { get; set; }
+
+    private WorkoutTemplateDetailDto? _template;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _template = await Api.GetTemplateAsync(TemplateId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar modelo: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

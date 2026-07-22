@@ -3,6 +3,7 @@ using Auth.API.Authentication;
 using Auth.API.Extensions;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Hosting;
 
 namespace Auth.API;
 
@@ -10,7 +11,8 @@ internal static class DependencyInjection
 {
     public static IServiceCollection AddAuthApiPresentation(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         services.AddProblemDetails();
         services.AddOpenApi();
@@ -34,7 +36,17 @@ internal static class DependencyInjection
             options.SlidingExpiration = false;
         });
 
+        // Registers the real Entra scheme when fully configured; throws on partial config;
+        // no-ops when absent.
         services.AddEntraExternal(configuration);
+
+        // Stand-alone dev: with no Entra configured, register the local "/dev-login" stand-in under
+        // the same "Entra" scheme name (see DevEntraAuthenticationExtensions) so the authorize flow
+        // works offline. Gated on Development so it can never be an auth bypass in production.
+        if (environment.IsDevelopment() && !EntraAuthenticationExtensions.IsConfigured(configuration))
+        {
+            services.AddDevEntraLogin();
+        }
 
         services.AddAuthorization(opt =>
         {
