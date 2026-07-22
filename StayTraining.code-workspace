@@ -1,0 +1,164 @@
+{
+  "folders": [
+    { "name": "backend", "path": "backend" },
+    { "name": "mobile", "path": "mobile" }
+  ],
+  "settings": {
+    "dotnet.defaultSolution": "backend/StayTraining.sln",
+    "dart.flutterSdkPath": "/Users/diegomodesto/Repos/Arquivado/flutter",
+    "files.exclude": {
+      "**/bin": true,
+      "**/obj": true,
+      "**/.dart_tool": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-dotnettools.csharp",
+      "ms-dotnettools.csdevkit",
+      "Dart-Code.dart-code",
+      "Dart-Code.flutter",
+      "ms-azuretools.vscode-docker"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "1 · Auth.API",
+        "type": "coreclr",
+        "request": "launch",
+        "preLaunchTask": "build-backend",
+        "program": "${workspaceFolder:backend}/src/EntryPoints/Auth.API/bin/Debug/net10.0/Auth.API.dll",
+        "cwd": "${workspaceFolder:backend}/src/EntryPoints/Auth.API",
+        "env": {
+          "ASPNETCORE_ENVIRONMENT": "Development",
+          "ASPNETCORE_URLS": "http://localhost:5100"
+        },
+        "console": "internalConsole"
+      },
+      {
+        "name": "2 · Web.API",
+        "type": "coreclr",
+        "request": "launch",
+        "preLaunchTask": "build-backend",
+        "program": "${workspaceFolder:backend}/src/EntryPoints/Web.API/bin/Debug/net10.0/Web.API.dll",
+        "cwd": "${workspaceFolder:backend}/src/EntryPoints/Web.API",
+        "env": {
+          "ASPNETCORE_ENVIRONMENT": "Development",
+          "ASPNETCORE_URLS": "http://localhost:5078"
+        },
+        "serverReadyAction": {
+          "action": "openExternally",
+          "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+        },
+        "console": "internalConsole"
+      },
+      {
+        "name": "3 · Gateway",
+        "type": "coreclr",
+        "request": "launch",
+        "preLaunchTask": "build-backend",
+        "program": "${workspaceFolder:backend}/src/EntryPoints/Gateway/bin/Debug/net10.0/Gateway.dll",
+        "cwd": "${workspaceFolder:backend}/src/EntryPoints/Gateway",
+        "env": {
+          "ASPNETCORE_ENVIRONMENT": "Development",
+          "ASPNETCORE_URLS": "http://localhost:5200",
+          "ReverseProxy__Clusters__web-api-cluster__Destinations__web-api__Address": "http://localhost:5078/",
+          "ReverseProxy__Clusters__auth-cluster__Destinations__auth__Address": "http://localhost:5100/"
+        },
+        "console": "internalConsole"
+      },
+      {
+        "name": "4 · Web.Blazor (backoffice)",
+        "type": "coreclr",
+        "request": "launch",
+        "preLaunchTask": "build-backend",
+        "program": "${workspaceFolder:backend}/src/EntryPoints/Web.Blazor/bin/Debug/net10.0/Web.Blazor.dll",
+        "cwd": "${workspaceFolder:backend}/src/EntryPoints/Web.Blazor",
+        "env": {
+          "ASPNETCORE_ENVIRONMENT": "Development",
+          "ASPNETCORE_URLS": "http://localhost:5275"
+        },
+        "serverReadyAction": {
+          "action": "openExternally",
+          "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+        },
+        "console": "internalConsole"
+      },
+      {
+        "name": "📱 Flutter (Android)",
+        "type": "dart",
+        "request": "launch",
+        "program": "lib/main.dart",
+        "cwd": "${workspaceFolder:mobile}",
+        "toolArgs": [
+          "--dart-define=API_BASE_URL=http://10.0.2.2:5200",
+          "--dart-define=AUTH_ISSUER=http://10.0.2.2:5100",
+          "--dart-define=AUTH_CLIENT_ID=mobile-app",
+          "--dart-define=AUTH_REDIRECT_URI=com.staytraining.app://oauth"
+        ]
+      },
+      {
+        "name": "📱 Flutter (iOS)",
+        "type": "dart",
+        "request": "launch",
+        "program": "lib/main.dart",
+        "cwd": "${workspaceFolder:mobile}",
+        "toolArgs": [
+          "--dart-define=API_BASE_URL=http://localhost:5200",
+          "--dart-define=AUTH_ISSUER=http://localhost:5100",
+          "--dart-define=AUTH_CLIENT_ID=mobile-app",
+          "--dart-define=AUTH_REDIRECT_URI=com.staytraining.app://oauth"
+        ]
+      }
+    ],
+    "compounds": [
+      {
+        "name": "🔧 Backend (Auth + API + Gateway)",
+        "configurations": ["1 · Auth.API", "2 · Web.API", "3 · Gateway"],
+        "stopAll": true
+      },
+      {
+        "name": "🖥️ Backend + Backoffice",
+        "configurations": ["1 · Auth.API", "2 · Web.API", "3 · Gateway", "4 · Web.Blazor (backoffice)"],
+        "stopAll": true
+      },
+      {
+        "name": "🚀 Full stack (Backend + Flutter iOS)",
+        "configurations": ["1 · Auth.API", "2 · Web.API", "3 · Gateway", "📱 Flutter (iOS)"],
+        "stopAll": true
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "build-backend",
+        "command": "dotnet",
+        "type": "process",
+        "args": ["build", "${workspaceFolder:backend}/StayTraining.sln"],
+        "problemMatcher": "$msCompile"
+      },
+      {
+        "label": "infra (docker)",
+        "type": "shell",
+        "command": "${workspaceFolder:backend}/../scripts/dev.sh infra",
+        "problemMatcher": []
+      },
+      {
+        "label": "migrate (EF)",
+        "type": "shell",
+        "command": "${workspaceFolder:backend}/../scripts/dev.sh migrate",
+        "problemMatcher": []
+      },
+      {
+        "label": "stop (docker)",
+        "type": "shell",
+        "command": "${workspaceFolder:backend}/../scripts/dev.sh stop",
+        "problemMatcher": []
+      }
+    ]
+  }
+}
