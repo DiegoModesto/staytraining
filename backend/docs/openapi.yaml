@@ -1,0 +1,1082 @@
+openapi: 3.1.0
+info:
+  title: StayTraining API
+  version: "1.0"
+  description: |
+    API REST do StayTraining, consumida pelo backoffice (Blazor) e pelo app (Flutter).
+
+    - **Base:** todas as rotas ficam sob `/api/v1`.
+    - **Autenticação:** `Authorization: Bearer <token>` (token opaco emitido pelo Auth.API). O tenant é
+      resolvido pelo gateway.
+    - **Autorização:** por permissão. Cada operação indica a permissão exigida em **Permissão:** na
+      descrição; operações marcadas apenas como *autenticado* aceitam qualquer token válido.
+    - **JSON:** enums são serializados como **inteiros**. Erros seguem `application/problem+json` (RFC 7807).
+    - Os exemplos são **mocks** para referência; os GUIDs seguem o seed de desenvolvimento.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Gateway (desenvolvimento)
+  - url: /api/v1
+    description: Relativo ao host
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Exercises
+    description: Catálogo de exercícios (por tenant) com prescrição padrão, músculos e mídias.
+  - name: Muscle Groups
+    description: Grupos musculares (globais). Leitura com `exercise.read`; escrita é admin.
+  - name: Modalities
+    description: Modalidades (Musculação, Funcional, Boxe…). Gerenciáveis por admin.
+  - name: Health Catalog
+    description: Partes do corpo e tipos de problema usados nos apontamentos de saúde.
+  - name: Workout Templates
+    description: Modelos de treino reutilizáveis (podem ser padrões do sistema).
+  - name: Workouts
+    description: Treinos de um aluno (do zero ou copiados de um modelo).
+  - name: Students
+    description: Alunos e ficha. Aluno edita a própria (Profiles); admin edita qualquer (auditado); professor lê.
+  - name: Profiles
+    description: Perfil do usuário logado ("Meu perfil"); para alunos mapeia a própria ficha.
+  - name: Sessions
+    description: Execução de treino — início, conclusão e notas de execução.
+  - name: Schedule
+    description: Agenda semanal de treinos.
+  - name: Reports
+    description: Relatório semanal consolidado.
+  - name: Notes
+    description: Consulta das notas de execução.
+  - name: Sync
+    description: Sincronização offline do app (pull de dados, push de sessões).
+  - name: Devices
+    description: Registro de token de push.
+
+paths:
+  # ---------------- Exercises ----------------
+  /exercises:
+    get:
+      tags: [Exercises]
+      summary: Listar exercícios
+      description: "Lista exercícios do tenant, opcionalmente por modalidade. **Permissão:** `exercise.read`."
+      parameters:
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ExerciseListItem" } }
+    post:
+      tags: [Exercises]
+      summary: Criar exercício
+      description: "Cria um exercício. Modalidade e músculo primário são obrigatórios. **Permissão:** `exercise.write`."
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateExerciseRequest" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/Problem" }
+  /exercises/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    get:
+      tags: [Exercises]
+      summary: Obter exercício
+      description: "Detalhe do exercício, com músculos, prescrição e mídias. **Permissão:** `exercise.read`."
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Exercise" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /exercises/{id}/media:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    post:
+      tags: [Exercises]
+      summary: Enviar mídia (upload)
+      description: "Envia uma mídia (GIF/vídeo/imagem) via multipart; vai para o object storage. **Permissão:** `exercise.write`."
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+                kind: { $ref: "#/components/schemas/ExerciseMediaKind" }
+      responses:
+        "201":
+          description: Created
+          content: { application/json: { schema: { type: object, properties: { id: { type: string, format: uuid }, key: { type: string } } } } }
+  /exercises/{id}/media/youtube:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    post:
+      tags: [Exercises]
+      summary: Anexar link do YouTube
+      description: "Anexa um link do YouTube como mídia. **Permissão:** `exercise.write`."
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string, example: "https://youtu.be/xxxx" } } } } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+
+  # ---------------- Muscle Groups ----------------
+  /muscle-groups:
+    get:
+      tags: [Muscle Groups]
+      summary: Listar grupos musculares
+      description: "Lista os grupos musculares. **Permissão:** `exercise.read`."
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/MuscleGroup" } } } } }
+    post:
+      tags: [Muscle Groups]
+      summary: Criar grupo muscular
+      description: "**Permissão:** `muscle.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/MuscleGroupRequest" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /muscle-groups/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    put:
+      tags: [Muscle Groups]
+      summary: Atualizar grupo muscular
+      description: "**Permissão:** `muscle.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/MuscleGroupRequest" } } } }
+      responses: { "204": { description: No Content }, "409": { $ref: "#/components/responses/Problem" } }
+    delete:
+      tags: [Muscle Groups]
+      summary: Excluir grupo muscular
+      description: "Soft-delete. Bloqueado (409) se em uso por exercícios. **Permissão:** `muscle.write`."
+      responses: { "204": { description: No Content }, "409": { $ref: "#/components/responses/Problem" } }
+
+  # ---------------- Modalities ----------------
+  /modalities:
+    get:
+      tags: [Modalities]
+      summary: Listar modalidades
+      description: "**Permissão:** `modality.read`."
+      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Modality" } } } } } }
+    post:
+      tags: [Modalities]
+      summary: Criar modalidade
+      description: "**Permissão:** `modality.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ModalityRequest" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /modalities/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    put:
+      tags: [Modalities]
+      summary: Atualizar modalidade
+      description: "**Permissão:** `modality.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ModalityRequest" } } } }
+      responses: { "204": { description: No Content } }
+    delete:
+      tags: [Modalities]
+      summary: Excluir modalidade
+      description: "Soft-delete. Bloqueado (409) se em uso. **Permissão:** `modality.write`."
+      responses: { "204": { description: No Content }, "409": { $ref: "#/components/responses/Problem" } }
+
+  # ---------------- Health Catalog ----------------
+  /health-catalog:
+    get:
+      tags: [Health Catalog]
+      summary: Listar catálogo de saúde
+      description: "Partes do corpo com seus tipos de problema. **Permissão:** `healthcatalog.read`."
+      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BodyPart" } } } } } }
+  /health-catalog/body-parts:
+    post:
+      tags: [Health Catalog]
+      summary: Criar parte do corpo
+      description: "**Permissão:** `healthcatalog.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/NameRequest" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /health-catalog/body-parts/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    put:
+      tags: [Health Catalog]
+      summary: Renomear parte do corpo
+      description: "**Permissão:** `healthcatalog.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/NameRequest" } } } }
+      responses: { "204": { description: No Content } }
+    delete:
+      tags: [Health Catalog]
+      summary: Excluir parte do corpo
+      description: "Bloqueado (409) se houver apontamentos. **Permissão:** `healthcatalog.write`."
+      responses: { "204": { description: No Content }, "409": { $ref: "#/components/responses/Problem" } }
+  /health-catalog/problem-types:
+    post:
+      tags: [Health Catalog]
+      summary: Criar tipo de problema
+      description: "**Permissão:** `healthcatalog.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateProblemTypeRequest" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /health-catalog/problem-types/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    put:
+      tags: [Health Catalog]
+      summary: Renomear tipo de problema
+      description: "**Permissão:** `healthcatalog.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/NameRequest" } } } }
+      responses: { "204": { description: No Content } }
+    delete:
+      tags: [Health Catalog]
+      summary: Excluir tipo de problema
+      description: "Bloqueado (409) se referenciado por apontamentos. **Permissão:** `healthcatalog.write`."
+      responses: { "204": { description: No Content }, "409": { $ref: "#/components/responses/Problem" } }
+
+  # ---------------- Workout Templates ----------------
+  /workout-templates:
+    get:
+      tags: [Workout Templates]
+      summary: Listar modelos
+      description: "**Permissão:** `template.read`."
+      parameters: [ { name: onlySystemDefaults, in: query, required: false, schema: { type: boolean } } ]
+      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/WorkoutTemplateListItem" } } } } } }
+    post:
+      tags: [Workout Templates]
+      summary: Criar modelo
+      description: "**Permissão:** `template.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateWorkoutTemplateRequest" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /workout-templates/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    get:
+      tags: [Workout Templates]
+      summary: Obter modelo
+      description: "**Permissão:** `template.read`."
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/WorkoutTemplate" } } } }, "404": { $ref: "#/components/responses/Problem" } }
+
+  # ---------------- Workouts ----------------
+  /workouts:
+    get:
+      tags: [Workouts]
+      summary: Listar treinos
+      description: "**Permissão:** `workout.read`."
+      parameters: [ { name: ownerStudentId, in: query, required: false, schema: { type: string, format: uuid } } ]
+      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/WorkoutListItem" } } } } } }
+    post:
+      tags: [Workouts]
+      summary: Criar treino
+      description: "Cria um treino do zero para um aluno. **Permissão:** `workout.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateWorkoutRequest" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /workouts/from-template:
+    post:
+      tags: [Workouts]
+      summary: Criar treino de um modelo
+      description: "**Permissão:** `workout.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateWorkoutFromTemplateRequest" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /workouts/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    get:
+      tags: [Workouts]
+      summary: Obter treino
+      description: "Detalhe com itens ordenados. **Permissão:** `workout.read`."
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Workout" } } } }, "404": { $ref: "#/components/responses/Problem" } }
+    delete:
+      tags: [Workouts]
+      summary: Excluir treino
+      description: "Soft-delete. **Permissão:** `workout.write`."
+      responses: { "204": { description: No Content } }
+  /workouts/{id}/name:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    put:
+      tags: [Workouts]
+      summary: Renomear treino
+      description: "**Permissão:** `workout.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/NameRequest" } } } }
+      responses: { "204": { description: No Content } }
+  /workouts/{id}/items:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    post:
+      tags: [Workouts]
+      summary: Adicionar exercício ao treino
+      description: "Corpo = item de prescrição. **Permissão:** `workout.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkoutItemInput" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /workouts/{id}/items/{itemId}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Workouts]
+      summary: Remover exercício do treino
+      description: "**Permissão:** `workout.write`."
+      responses: { "204": { description: No Content } }
+  /workouts/{id}/items/order:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    put:
+      tags: [Workouts]
+      summary: Reordenar itens
+      description: "**Permissão:** `workout.write`."
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [orderedItemIds], properties: { orderedItemIds: { type: array, items: { type: string, format: uuid } } } } } }
+      responses: { "204": { description: No Content } }
+
+  # ---------------- Students ----------------
+  /students:
+    get:
+      tags: [Students]
+      summary: Listar alunos
+      description: "**Permissão:** `student.read`."
+      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudentListItem" } } } } } }
+    post:
+      tags: [Students]
+      summary: Cadastrar aluno
+      description: "**Permissão:** `student.manage`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RegisterStudentRequest" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /students/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    get:
+      tags: [Students]
+      summary: Obter ficha do aluno
+      description: "Dados pessoais, foto e apontamentos de saúde. **Permissão:** `student.read`."
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/StudentDetail" } } } }, "404": { $ref: "#/components/responses/Problem" } }
+  /students/{id}/ficha:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    put:
+      tags: [Students]
+      summary: Editar ficha (admin, auditado)
+      description: "Admin edita os dados da ficha; a edição é registrada em edit-logs. **Permissão:** `studentficha.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UpdateStudentFichaRequest" } } } }
+      responses: { "204": { description: No Content } }
+  /students/{id}/apportments:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    post:
+      tags: [Students]
+      summary: Adicionar apontamento (admin, auditado)
+      description: "**Permissão:** `studentficha.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AddApportmentRequest" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /students/{id}/apportments/{apportmentId}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: apportmentId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Students]
+      summary: Remover apontamento (admin, auditado)
+      description: "**Permissão:** `studentficha.write`."
+      responses: { "204": { description: No Content } }
+  /students/{id}/edit-logs:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    get:
+      tags: [Students]
+      summary: Histórico de edições da ficha
+      description: "**Permissão:** `studentficha.write`."
+      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudentEditLog" } } } } } }
+  /students/{id}/notes:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    get:
+      tags: [Students]
+      summary: Listar anotações do aluno
+      description: "Anotações do professor (gerais e por treino). **Permissão:** `student.read`."
+      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudentNote" } } } } } }
+    post:
+      tags: [Students]
+      summary: Adicionar anotação
+      description: "Anotação do professor (nunca visível ao aluno). Com `workoutId`, fica vinculada a um treino. **Permissão:** `health.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AddStudentNoteRequest" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+
+  # ---------------- Profiles ----------------
+  /profiles/me:
+    get:
+      tags: [Profiles]
+      summary: Meu perfil
+      description: "Perfil do usuário atual. `isStudent` indica se é ficha de aluno. *Autenticado.*"
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Profile" } } } } }
+    put:
+      tags: [Profiles]
+      summary: Atualizar meu perfil
+      description: "Atualiza os dados do próprio perfil. *Autenticado.*"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UpdateProfileRequest" } } } }
+      responses: { "204": { description: No Content } }
+  /profiles/me/photo:
+    post:
+      tags: [Profiles]
+      summary: Enviar foto do perfil
+      description: "Multipart, imagem ≤ 2 MB. Guarda no storage e devolve URL pré-assinada. *Autenticado.*"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, properties: { file: { type: string, format: binary } } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { key: { type: string }, photoUrl: { type: string } }, example: { key: "avatars/1111.../3333....jpg", photoUrl: "https://.../avatars/...jpg?sig=..." } } } }
+  /profiles/me/apportments:
+    post:
+      tags: [Profiles]
+      summary: Adicionar apontamento (aluno)
+      description: "O aluno adiciona um apontamento de saúde na própria ficha. *Autenticado.*"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AddApportmentRequest" } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /profiles/me/apportments/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    delete:
+      tags: [Profiles]
+      summary: Remover apontamento (aluno)
+      description: "O aluno remove um apontamento da própria ficha. *Autenticado.*"
+      responses: { "204": { description: No Content } }
+
+  # ---------------- Sessions ----------------
+  /sessions:
+    post:
+      tags: [Sessions]
+      summary: Iniciar sessão
+      description: "Inicia a execução de um treino. **Permissão:** `session.write`."
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [workoutId], properties: { workoutId: { type: string, format: uuid } } } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+  /sessions/{id}/complete:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    post:
+      tags: [Sessions]
+      summary: Concluir sessão
+      description: "**Permissão:** `session.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CompleteSessionRequest" } } } }
+      responses: { "204": { description: No Content } }
+  /sessions/{id}/notes:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    get:
+      tags: [Notes]
+      summary: Notas de execução da sessão
+      description: "**Permissão:** `workout.read`."
+      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ExerciseNote" } } } } } }
+    put:
+      tags: [Sessions]
+      summary: Registrar/atualizar nota de execução (upsert)
+      description: "Upsert da nota de um exercício na sessão. Retorna **200**. **Permissão:** `note.write`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UpsertExerciseNoteRequest" } } } }
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IdResponse" } } } } }
+
+  # ---------------- Schedule ----------------
+  /schedule/week:
+    get:
+      tags: [Schedule]
+      summary: Agenda da semana
+      description: "**Permissão:** `workout.read`."
+      parameters:
+        - { name: weekStart, in: query, required: true, schema: { type: string, format: date }, description: "Início da semana (yyyy-MM-dd)" }
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/WeekScheduleItem" } } } } } }
+  /schedule:
+    post:
+      tags: [Schedule]
+      summary: Agendar treino
+      description: "**Permissão:** `session.write`."
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [workoutId, date], properties: { workoutId: { type: string, format: uuid }, date: { type: string, format: date } } } } } }
+      responses: { "201": { $ref: "#/components/responses/Created" } }
+
+  # ---------------- Reports ----------------
+  /reports/weekly:
+    get:
+      tags: [Reports]
+      summary: Relatório semanal
+      description: "Resumo da semana: sessões, médias e por exercício. **Permissão:** `report.read`."
+      parameters:
+        - { name: weekStart, in: query, required: true, schema: { type: string, format: date } }
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/WeeklyReport" } } } } }
+
+  # ---------------- Notes ----------------
+  /notes:
+    get:
+      tags: [Notes]
+      summary: Listar notas de execução
+      description: "Filtrável por aluno/exercício. **Permissão:** `report.read`."
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: exerciseId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ExerciseNote" } } } } } }
+
+  # ---------------- Sync ----------------
+  /sync/pull:
+    get:
+      tags: [Sync]
+      summary: Pull de mudanças (delta)
+      description: "Puxa mudanças desde `since`. Sem `since`, devolve tudo. **Permissão:** `workout.read`."
+      parameters: [ { name: since, in: query, required: false, schema: { type: string, format: date-time } } ]
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SyncPullResponse" } } } } }
+  /sync/sessions:
+    post:
+      tags: [Sync]
+      summary: Push de sessões executadas
+      description: "Envia sessões offline (idempotente por id). **Permissão:** `session.write`."
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { sessions: { type: array, items: { $ref: "#/components/schemas/SessionPushInput" } } } } } } }
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SyncPushResult" } } } } }
+
+  # ---------------- Devices ----------------
+  /devices/token:
+    post:
+      tags: [Devices]
+      summary: Registrar token de push
+      description: "Registra o token de push (Platform: 0=Android, 1=iOS). Retorna **200**. *Autenticado.*"
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [token, platform], properties: { token: { type: string }, platform: { $ref: "#/components/schemas/DevicePlatform" } } } } } }
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IdResponse" } } } } }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: opaque }
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    Created:
+      description: Created
+      content: { application/json: { schema: { $ref: "#/components/schemas/IdResponse" } } }
+    Problem:
+      description: Erro (ProblemDetails RFC 7807)
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            properties:
+              type: { type: string }
+              title: { type: string }
+              status: { type: integer }
+              detail: { type: string }
+              errors: { type: object, additionalProperties: true }
+            example: { title: "Modality.InUse", status: 409, detail: "Modality '…' is referenced by exercises and cannot be deleted." }
+  schemas:
+    IdResponse:
+      type: object
+      properties: { id: { type: string, format: uuid } }
+      example: { id: "7a1e0b2c-0001-4a10-9c00-000000000001" }
+
+    BloodType:
+      type: integer
+      description: "0=Unknown, 1=A+, 2=A-, 3=B+, 4=B-, 5=AB+, 6=AB-, 7=O+, 8=O-"
+      enum: [0,1,2,3,4,5,6,7,8]
+      example: 7
+    ExerciseMediaKind:
+      type: integer
+      description: "0=Gif, 1=UploadedVideo, 2=YoutubeUrl, 3=MuscleImage"
+      enum: [0,1,2,3]
+      example: 2
+    DevicePlatform:
+      type: integer
+      description: "0=Android, 1=iOS"
+      enum: [0,1]
+      example: 0
+
+    NameRequest:
+      type: object
+      required: [name]
+      properties: { name: { type: string } }
+      example: { name: "Ombro" }
+
+    # ---- Exercises ----
+    ExerciseMediaInput:
+      type: object
+      properties:
+        kind: { $ref: "#/components/schemas/ExerciseMediaKind" }
+        storageKey: { type: [string, "null"] }
+        url: { type: [string, "null"] }
+        contentType: { type: [string, "null"] }
+        sizeBytes: { type: [integer, "null"], format: int64 }
+    ExerciseMedia:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/ExerciseMediaKind" }
+        storageKey: { type: [string, "null"] }
+        url: { type: [string, "null"] }
+        contentType: { type: [string, "null"] }
+        sizeBytes: { type: [integer, "null"], format: int64 }
+    CreateExerciseRequest:
+      type: object
+      required: [name, modalityId, primaryMuscleGroupId, defaultSets, defaultReps, defaultRestSeconds, isAerobic]
+      properties:
+        name: { type: string }
+        description: { type: [string, "null"] }
+        modalityId: { type: string, format: uuid }
+        primaryMuscleGroupId: { type: string, format: uuid }
+        secondaryMuscleGroupIds: { type: [array, "null"], items: { type: string, format: uuid } }
+        usageExample: { type: [string, "null"] }
+        defaultSets: { type: integer }
+        defaultReps: { type: integer }
+        defaultRestSeconds: { type: integer }
+        isAerobic: { type: boolean }
+        defaultWorkSeconds: { type: [integer, "null"] }
+        defaultIntervalRestSeconds: { type: [integer, "null"] }
+        defaultRounds: { type: [integer, "null"] }
+        media: { type: [array, "null"], items: { $ref: "#/components/schemas/ExerciseMediaInput" } }
+      example:
+        name: "Supino reto"
+        description: "Empurrar na horizontal."
+        modalityId: "10000000-0000-0000-0000-000000000001"
+        primaryMuscleGroupId: "6d05c0a0-0002-4a10-9c00-000000000002"
+        secondaryMuscleGroupIds: []
+        usageExample: "Barra na linha do mamilo."
+        defaultSets: 4
+        defaultReps: 10
+        defaultRestSeconds: 90
+        isAerobic: false
+        media: [ { kind: 2, url: "https://youtu.be/xxxx" } ]
+    ExerciseListItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        modalityId: { type: string, format: uuid }
+        modalityName: { type: string }
+        primaryMuscleGroupId: { type: string, format: uuid }
+        isAerobic: { type: boolean }
+      example: { id: "7a1e0b2c-0001-4a10-9c00-000000000001", name: "Supino reto", modalityId: "10000000-0000-0000-0000-000000000001", modalityName: "Musculação", primaryMuscleGroupId: "6d05c0a0-0002-4a10-9c00-000000000002", isAerobic: false }
+    Exercise:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: [string, "null"] }
+        modalityId: { type: string, format: uuid }
+        modalityName: { type: string }
+        primaryMuscleGroupId: { type: string, format: uuid }
+        secondaryMuscleGroupIds: { type: array, items: { type: string, format: uuid } }
+        usageExample: { type: [string, "null"] }
+        defaultSets: { type: integer }
+        defaultReps: { type: integer }
+        defaultRestSeconds: { type: integer }
+        isAerobic: { type: boolean }
+        defaultWorkSeconds: { type: [integer, "null"] }
+        defaultIntervalRestSeconds: { type: [integer, "null"] }
+        defaultRounds: { type: [integer, "null"] }
+        media: { type: array, items: { $ref: "#/components/schemas/ExerciseMedia" } }
+
+    # ---- Muscle groups / modalities ----
+    MuscleGroup:
+      type: object
+      properties: { id: { type: string, format: uuid }, name: { type: string }, bodyRegion: { type: string } }
+      example: { id: "6d05c0a0-0002-4a10-9c00-000000000002", name: "Peito", bodyRegion: "Superiores" }
+    MuscleGroupRequest:
+      type: object
+      required: [name, bodyRegion]
+      properties: { name: { type: string }, bodyRegion: { type: string } }
+      example: { name: "Peito", bodyRegion: "Superiores" }
+    Modality:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        colorHex: { type: string }
+        isIntervalBased: { type: boolean }
+        sortOrder: { type: integer }
+      example: { id: "10000000-0000-0000-0000-000000000001", name: "Musculação", colorHex: "#4EA8FF", isIntervalBased: false, sortOrder: 0 }
+    ModalityRequest:
+      type: object
+      required: [name, colorHex, isIntervalBased, sortOrder]
+      properties:
+        name: { type: string }
+        colorHex: { type: string, description: "hex #rrggbb" }
+        isIntervalBased: { type: boolean }
+        sortOrder: { type: integer }
+      example: { name: "Boxe", colorHex: "#FF4757", isIntervalBased: true, sortOrder: 2 }
+
+    # ---- Health catalog ----
+    ProblemType:
+      type: object
+      properties: { id: { type: string, format: uuid }, name: { type: string }, sortOrder: { type: integer } }
+    BodyPart:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        sortOrder: { type: integer }
+        problemTypes: { type: array, items: { $ref: "#/components/schemas/ProblemType" } }
+      example:
+        id: "20000000-0000-0000-0000-000000000002"
+        name: "Ombro"
+        sortOrder: 1
+        problemTypes: [ { id: "21000000-0000-0000-0000-000000000003", name: "Deslocamento", sortOrder: 1 } ]
+    CreateProblemTypeRequest:
+      type: object
+      required: [bodyPartId, name]
+      properties: { bodyPartId: { type: string, format: uuid }, name: { type: string } }
+      example: { bodyPartId: "20000000-0000-0000-0000-000000000002", name: "Deslocamento" }
+
+    # ---- Workout building blocks ----
+    WorkoutItemInput:
+      type: object
+      required: [exerciseId, order, sets, reps, restSeconds]
+      properties:
+        exerciseId: { type: string, format: uuid }
+        order: { type: integer }
+        sectionLabel: { type: [string, "null"] }
+        sets: { type: integer }
+        reps: { type: integer }
+        restSeconds: { type: integer }
+        durationSeconds: { type: [integer, "null"] }
+        workSeconds: { type: [integer, "null"] }
+        intervalRestSeconds: { type: [integer, "null"] }
+        rounds: { type: [integer, "null"] }
+        professorComment: { type: [string, "null"] }
+      example: { exerciseId: "7a1e0b2c-0001-4a10-9c00-000000000001", order: 1, sectionLabel: "Costas", sets: 4, reps: 10, restSeconds: 90, professorComment: "Cuidado com o ombro." }
+    TemplateItemInput:
+      type: object
+      required: [exerciseId, order, sets, reps, restSeconds]
+      properties:
+        exerciseId: { type: string, format: uuid }
+        order: { type: integer }
+        sectionLabel: { type: [string, "null"] }
+        sets: { type: integer }
+        reps: { type: integer }
+        restSeconds: { type: integer }
+        durationSeconds: { type: [integer, "null"] }
+        workSeconds: { type: [integer, "null"] }
+        intervalRestSeconds: { type: [integer, "null"] }
+        rounds: { type: [integer, "null"] }
+        creatorNotes: { type: [string, "null"] }
+    WorkoutItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        exerciseId: { type: string, format: uuid }
+        order: { type: integer }
+        sectionLabel: { type: [string, "null"] }
+        sets: { type: integer }
+        reps: { type: integer }
+        restSeconds: { type: integer }
+        durationSeconds: { type: [integer, "null"] }
+        workSeconds: { type: [integer, "null"] }
+        intervalRestSeconds: { type: [integer, "null"] }
+        rounds: { type: [integer, "null"] }
+        professorComment: { type: [string, "null"] }
+    TemplateItem:
+      allOf: [ { $ref: "#/components/schemas/WorkoutItem" } ]
+    CreateWorkoutTemplateRequest:
+      type: object
+      required: [name, isSystemDefault, items]
+      properties:
+        name: { type: string }
+        description: { type: [string, "null"] }
+        modalityId: { type: [string, "null"], format: uuid }
+        isSystemDefault: { type: boolean }
+        creatorNotes: { type: [string, "null"] }
+        items: { type: array, items: { $ref: "#/components/schemas/TemplateItemInput" } }
+    WorkoutTemplateListItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        modalityId: { type: [string, "null"], format: uuid }
+        modalityName: { type: [string, "null"] }
+        isSystemDefault: { type: boolean }
+        itemCount: { type: integer }
+      example: { id: "5d7e3f40-0005-4a10-9c00-000000000005", name: "Costas e Ombro", modalityId: "10000000-0000-0000-0000-000000000001", modalityName: "Musculação", isSystemDefault: true, itemCount: 5 }
+    WorkoutTemplate:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: [string, "null"] }
+        modalityId: { type: [string, "null"], format: uuid }
+        modalityName: { type: [string, "null"] }
+        isSystemDefault: { type: boolean }
+        creatorNotes: { type: [string, "null"] }
+        items: { type: array, items: { $ref: "#/components/schemas/TemplateItem" } }
+    CreateWorkoutRequest:
+      type: object
+      required: [ownerStudentId, name, items]
+      properties:
+        ownerStudentId: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: [string, "null"] }
+        modalityId: { type: [string, "null"], format: uuid }
+        items: { type: array, items: { $ref: "#/components/schemas/WorkoutItemInput" } }
+      example: { ownerStudentId: "33333333-3333-3333-3333-333333333333", name: "Treino A", modalityId: "10000000-0000-0000-0000-000000000001", items: [] }
+    CreateWorkoutFromTemplateRequest:
+      type: object
+      required: [templateId, ownerStudentId]
+      properties:
+        templateId: { type: string, format: uuid }
+        ownerStudentId: { type: string, format: uuid }
+        nameOverride: { type: [string, "null"] }
+    WorkoutListItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        modalityId: { type: [string, "null"], format: uuid }
+        modalityName: { type: [string, "null"] }
+        itemCount: { type: integer }
+      example: { id: "3b9c1d2e-0003-4a10-9c00-000000000003", name: "Treino A", modalityId: "10000000-0000-0000-0000-000000000001", modalityName: "Musculação", itemCount: 6 }
+    Workout:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ownerStudentId: { type: string, format: uuid }
+        sourceTemplateId: { type: [string, "null"], format: uuid }
+        name: { type: string }
+        description: { type: [string, "null"] }
+        modalityId: { type: [string, "null"], format: uuid }
+        modalityName: { type: [string, "null"] }
+        items: { type: array, items: { $ref: "#/components/schemas/WorkoutItem" } }
+
+    # ---- Students ----
+    StudentListItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        fullName: { type: string }
+        email: { type: [string, "null"] }
+      example: { id: "8e6f4051-0006-4a10-9c00-000000000006", userId: "33333333-3333-3333-3333-333333333333", fullName: "Rita Sibele", email: "ritasouzamodesto@gmail.com" }
+    HealthApportment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        bodyPartId: { type: string, format: uuid }
+        bodyPartName: { type: string }
+        problemTypeId: { type: string, format: uuid }
+        problemTypeName: { type: string }
+        observation: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+    StudentNote:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workoutId: { type: [string, "null"], format: uuid }
+        authorUserId: { type: string, format: uuid }
+        authorName: { type: string }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+    StudentEditLog:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        editorUserId: { type: string, format: uuid }
+        editorName: { type: string }
+        action: { type: string }
+        detail: { type: string }
+        createdAt: { type: string, format: date-time }
+      example: { id: "b1927384-0009-4a10-9c00-000000000009", editorUserId: "22222222-2222-2222-2222-222222222222", editorName: "Diego Sanches", action: "FichaUpdated", detail: "Dados pessoais da ficha atualizados.", createdAt: "2026-07-22T10:00:00Z" }
+    StudentDetail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        fullName: { type: string }
+        email: { type: [string, "null"] }
+        birthDate: { type: [string, "null"], format: date }
+        goals: { type: [string, "null"] }
+        phone: { type: [string, "null"] }
+        emergencyPhone: { type: [string, "null"] }
+        bloodType: { $ref: "#/components/schemas/BloodType" }
+        heightCm: { type: [integer, "null"] }
+        weightKg: { type: [number, "null"] }
+        photoUrl: { type: [string, "null"] }
+        healthApportments: { type: array, items: { $ref: "#/components/schemas/HealthApportment" } }
+      example:
+        id: "8e6f4051-0006-4a10-9c00-000000000006"
+        userId: "33333333-3333-3333-3333-333333333333"
+        fullName: "Rita Sibele"
+        email: "ritasouzamodesto@gmail.com"
+        birthDate: "1995-04-12"
+        goals: "Ganho de força."
+        phone: "+55 11 90000-0000"
+        emergencyPhone: "+55 11 91111-1111"
+        bloodType: 7
+        heightCm: 165
+        weightKg: 60.5
+        photoUrl: "https://.../avatars/...jpg?sig=..."
+        healthApportments:
+          - { id: "a0816273-0008-4a10-9c00-000000000008", bodyPartId: "20000000-0000-0000-0000-000000000002", bodyPartName: "Ombro", problemTypeId: "21000000-0000-0000-0000-000000000003", problemTypeName: "Deslocamento", observation: "Progressão gradual.", createdAt: "2026-07-20T13:00:00Z" }
+    RegisterStudentRequest:
+      type: object
+      required: [userId, fullName]
+      properties:
+        userId: { type: string, format: uuid }
+        fullName: { type: string }
+        email: { type: [string, "null"] }
+        birthDate: { type: [string, "null"], format: date }
+        goals: { type: [string, "null"] }
+    UpdateStudentFichaRequest:
+      type: object
+      required: [fullName, bloodType]
+      properties:
+        fullName: { type: string }
+        email: { type: [string, "null"] }
+        phone: { type: [string, "null"] }
+        emergencyPhone: { type: [string, "null"] }
+        bloodType: { $ref: "#/components/schemas/BloodType" }
+        heightCm: { type: [integer, "null"] }
+        weightKg: { type: [number, "null"] }
+        goals: { type: [string, "null"] }
+    AddApportmentRequest:
+      type: object
+      required: [bodyPartId, problemTypeId]
+      properties:
+        bodyPartId: { type: string, format: uuid }
+        problemTypeId: { type: string, format: uuid }
+        observation: { type: [string, "null"] }
+      example: { bodyPartId: "20000000-0000-0000-0000-000000000002", problemTypeId: "21000000-0000-0000-0000-000000000003", observation: "Sem cirurgia; foco na absorção." }
+    AddStudentNoteRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string }
+        workoutId: { type: [string, "null"], format: uuid, description: "null = anotação geral; preenchido = por treino" }
+      example: { content: "Aluna dedicada.", workoutId: null }
+
+    # ---- Profiles ----
+    ProfileApportment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        bodyPartName: { type: string }
+        problemTypeName: { type: string }
+        observation: { type: [string, "null"] }
+    Profile:
+      type: object
+      properties:
+        isStudent: { type: boolean }
+        fullName: { type: string }
+        email: { type: string }
+        phone: { type: [string, "null"] }
+        emergencyPhone: { type: [string, "null"] }
+        bloodType: { $ref: "#/components/schemas/BloodType" }
+        heightCm: { type: [integer, "null"] }
+        weightKg: { type: [number, "null"] }
+        photoUrl: { type: [string, "null"] }
+        apportments: { type: array, items: { $ref: "#/components/schemas/ProfileApportment" } }
+      example:
+        isStudent: true
+        fullName: "Rita Sibele"
+        email: "ritasouzamodesto@gmail.com"
+        phone: "+55 11 90000-0000"
+        emergencyPhone: "+55 11 91111-1111"
+        bloodType: 7
+        heightCm: 165
+        weightKg: 60.5
+        photoUrl: "https://.../avatars/...jpg?sig=..."
+        apportments: [ { id: "a0816273-0008-4a10-9c00-000000000008", bodyPartName: "Ombro", problemTypeName: "Deslocamento", observation: "Progressão gradual." } ]
+    UpdateProfileRequest:
+      type: object
+      required: [fullName, email, bloodType]
+      properties:
+        fullName: { type: string }
+        email: { type: string }
+        phone: { type: [string, "null"] }
+        emergencyPhone: { type: [string, "null"] }
+        bloodType: { $ref: "#/components/schemas/BloodType" }
+        heightCm: { type: [integer, "null"] }
+        weightKg: { type: [number, "null"] }
+
+    # ---- Execution ----
+    CompleteSessionRequest:
+      type: object
+      properties:
+        completionRating: { type: [integer, "null"] }
+        overallComment: { type: [string, "null"] }
+      example: { completionRating: 5, overallComment: "Ótimo treino." }
+    UpsertExerciseNoteRequest:
+      type: object
+      required: [workoutItemId, exerciseId, painFlag]
+      properties:
+        workoutItemId: { type: string, format: uuid }
+        exerciseId: { type: string, format: uuid }
+        loadKg: { type: [number, "null"] }
+        painFlag: { type: boolean }
+        painNote: { type: [string, "null"] }
+        comment: { type: [string, "null"] }
+        performedSets: { type: [integer, "null"] }
+        performedReps: { type: [integer, "null"] }
+    ExerciseNote:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sessionId: { type: string, format: uuid }
+        sessionDate: { type: string, format: date-time }
+        workoutItemId: { type: string, format: uuid }
+        exerciseId: { type: string, format: uuid }
+        loadKg: { type: [number, "null"] }
+        painFlag: { type: boolean }
+        painNote: { type: [string, "null"] }
+        comment: { type: [string, "null"] }
+        performedSets: { type: [integer, "null"] }
+        performedReps: { type: [integer, "null"] }
+        createdAt: { type: string, format: date-time }
+    WeekScheduleItem:
+      type: object
+      properties:
+        scheduleId: { type: string, format: uuid }
+        date: { type: string, format: date }
+        workoutId: { type: string, format: uuid }
+        workoutName: { type: string }
+    WeeklyReportSession:
+      type: object
+      properties:
+        sessionId: { type: string, format: uuid }
+        workoutId: { type: string, format: uuid }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: [string, "null"], format: date-time }
+        rating: { type: [integer, "null"] }
+        noteCount: { type: integer }
+    WeeklyReportExercise:
+      type: object
+      properties:
+        exerciseId: { type: string, format: uuid }
+        timesPerformed: { type: integer }
+        totalSets: { type: integer }
+        totalReps: { type: integer }
+        maxLoadKg: { type: [number, "null"] }
+    WeeklyReport:
+      type: object
+      properties:
+        weekStart: { type: string, format: date }
+        weekEnd: { type: string, format: date }
+        sessionCount: { type: integer }
+        completedSessionCount: { type: integer }
+        averageRating: { type: [number, "null"] }
+        distinctWorkoutCount: { type: integer }
+        sessions: { type: array, items: { $ref: "#/components/schemas/WeeklyReportSession" } }
+        exercises: { type: array, items: { $ref: "#/components/schemas/WeeklyReportExercise" } }
+
+    # ---- Sync ----
+    NotePushInput:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workoutItemId: { type: string, format: uuid }
+        exerciseId: { type: string, format: uuid }
+        loadKg: { type: [number, "null"] }
+        painFlag: { type: boolean }
+        painNote: { type: [string, "null"] }
+        comment: { type: [string, "null"] }
+        performedSets: { type: [integer, "null"] }
+        performedReps: { type: [integer, "null"] }
+        createdAt: { type: string, format: date-time }
+    SessionPushInput:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workoutId: { type: string, format: uuid }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: [string, "null"], format: date-time }
+        completionRating: { type: [integer, "null"] }
+        overallComment: { type: [string, "null"] }
+        notes: { type: array, items: { $ref: "#/components/schemas/NotePushInput" } }
+    ScheduleSyncItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        workoutId: { type: string, format: uuid }
+    SyncPullResponse:
+      type: object
+      properties:
+        serverTime: { type: string, format: date-time }
+        muscleGroups: { type: array, items: { $ref: "#/components/schemas/MuscleGroup" } }
+        deletedMuscleGroupIds: { type: array, items: { type: string, format: uuid } }
+        exercises: { type: array, items: { $ref: "#/components/schemas/Exercise" } }
+        deletedExerciseIds: { type: array, items: { type: string, format: uuid } }
+        templates: { type: array, items: { $ref: "#/components/schemas/WorkoutTemplate" } }
+        deletedTemplateIds: { type: array, items: { type: string, format: uuid } }
+        workouts: { type: array, items: { $ref: "#/components/schemas/Workout" } }
+        deletedWorkoutIds: { type: array, items: { type: string, format: uuid } }
+        schedules: { type: array, items: { $ref: "#/components/schemas/ScheduleSyncItem" } }
+        deletedScheduleIds: { type: array, items: { type: string, format: uuid } }
+    SyncPushResult:
+      type: object
+      properties:
+        sessionsInserted: { type: integer }
+        sessionsSkipped: { type: integer }
+      example: { sessionsInserted: 1, sessionsSkipped: 0 }
