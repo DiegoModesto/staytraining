@@ -1,0 +1,18 @@
+# staytraining_api.model.StudentListItem
+
+## Load the model package
+```dart
+import 'package:staytraining_api/api.dart';
+```
+
+## Properties
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**id** | **String** |  | [optional] 
+**userId** | **String** |  | [optional] 
+**fullName** | **String** |  | [optional] 
+**email** | **String** |  | [optional] 
+
+[[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
+
+
