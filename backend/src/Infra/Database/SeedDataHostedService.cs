@@ -16,7 +16,7 @@ namespace Infra.Database;
 /// <summary>
 /// Idempotent seed for reference muscle groups (global) and, when <c>Seed:TenantId</c> is configured,
 /// a starter exercise catalog, system-default workout templates (musculação, funcional, boxe) and
-/// mock users (aluno Rita Sibele Modesto, admin/professor Diego Modesto).
+/// mock users (aluno Rita Sibele, admin/professor Diego Sanches).
 /// Runs once on startup; inserts only what is missing (matched by name).
 /// </summary>
 internal sealed class SeedDataHostedService(
@@ -59,8 +59,8 @@ internal sealed class SeedDataHostedService(
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <summary>
-    /// Seeds the mock student "Rita Sibele Modesto" with a health note and a starter workout copied
-    /// from the "Costas e Ombro" template. The admin/professor "Diego Modesto" needs no training-side
+    /// Seeds the mock student "Rita Sibele" with a health note and a starter workout copied
+    /// from the "Costas e Ombro" template. The admin/professor "Diego Sanches" needs no training-side
     /// row (identified only by <see cref="AdminUserId"/> + the Professor role).
     /// </summary>
     private async Task SeedMockUsersAsync(IApplicationDbContext db, Guid tenantId, CancellationToken ct)
@@ -75,8 +75,8 @@ internal sealed class SeedDataHostedService(
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
                 UserId = RitaStudentUserId,
-                FullName = "Rita Sibele Modesto",
-                Email = "rita.modesto@example.com",
+                FullName = "Rita Sibele",
+                Email = "ritasouzamodesto@gmail.com",
                 Goals = "Ganho de força e condicionamento geral.",
                 CreatedAt = DateTimeOffset.UtcNow,
             };
@@ -96,7 +96,7 @@ internal sealed class SeedDataHostedService(
                 Id = Guid.NewGuid(),
                 StudentProfileId = rita.Id,
                 AuthorUserId = AdminUserId,
-                AuthorName = "Diego Modesto",
+                AuthorName = "Diego Sanches",
                 Content = "Aluna dedicada e assídua. Boa evolução na técnica de agachamento.",
                 CreatedAt = DateTimeOffset.UtcNow,
             });

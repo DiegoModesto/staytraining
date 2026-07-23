@@ -15,6 +15,13 @@ public static class DevIdentityDefaults
     /// <summary>Both the tenant's internal <c>Id</c> and its <c>EntraTenantId</c> (the <c>tid</c> claim).</summary>
     public static readonly Guid TenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
+    /// <summary>
+    /// Shared password for the Development-only local login. This is NOT real credential storage —
+    /// production authenticates via Microsoft Entra (no password). It only gates the dev-login page so
+    /// the email + senha flow can be exercised locally (incl. the mobile OIDC webview).
+    /// </summary>
+    public const string DevPassword = "@123mudar";
+
     /// <summary>A selectable mock identity on the dev login page.</summary>
     public sealed record DevUser(
         Guid UserId,
@@ -29,16 +36,16 @@ public static class DevIdentityDefaults
     public static readonly DevUser Professor = new(
         UserId: Guid.Parse("22222222-2222-2222-2222-222222222222"),
         EntraOid: Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-        Email: "diego.modesto@example.com",
-        DisplayName: "Diego Modesto",
+        Email: "diegosanches89@gmail.com",
+        DisplayName: "Diego Sanches",
         RoleName: "Professor",
         Permissions: [.. PermissionCodes.TeacherRole.Union(PermissionCodes.Admin)]);
 
     public static readonly DevUser Student = new(
         UserId: Guid.Parse("33333333-3333-3333-3333-333333333333"),
         EntraOid: Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-        Email: "rita.modesto@example.com",
-        DisplayName: "Rita Sibele Modesto",
+        Email: "ritasouzamodesto@gmail.com",
+        DisplayName: "Rita Sibele",
         RoleName: "Aluno",
         Permissions: PermissionCodes.StudentRole);
 

@@ -27,6 +27,7 @@ internal static class DevLoginEndpoints
         app.MapPost(DevEntraAuthenticationHandler.DevLoginPath, async (
                 HttpContext http,
                 [FromForm] string oid,
+                [FromForm] string? password,
                 [FromForm] string? returnUrl) =>
             {
                 DevIdentityDefaults.DevUser? mock =
@@ -34,6 +35,14 @@ internal static class DevLoginEndpoints
                 if (mock is null)
                 {
                     return Results.BadRequest("Unknown mock user.");
+                }
+
+                // Dev-only password gate (no real credential store — production uses Entra).
+                if (!string.Equals(password, DevIdentityDefaults.DevPassword, StringComparison.Ordinal))
+                {
+                    return Results.Content(
+                        RenderPage(returnUrl, $"Senha incorreta para {mock.Email}."),
+                        "text/html; charset=utf-8");
                 }
 
                 var identity = new ClaimsIdentity(
@@ -60,7 +69,7 @@ internal static class DevLoginEndpoints
             .ExcludeFromDescription();
     }
 
-    private static string RenderPage(string? returnUrl)
+    private static string RenderPage(string? returnUrl, string? error = null)
     {
         string safeReturn = System.Net.WebUtility.HtmlEncode(returnUrl ?? string.Empty);
 
@@ -82,10 +91,18 @@ internal static class DevLoginEndpoints
               button:hover{border-color:#3b82f6;background:#172033}
               .role{color:#60a5fa;font-size:.8rem}
               .warn{margin-top:1.5rem;font-size:.75rem;color:#f59e0b}
+              input[type=password]{width:100%;box-sizing:border-box;padding:.7rem 1rem;margin:.75rem 0 .25rem;
+                   border:1px solid #334155;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:1rem}
+              .err{background:#7f1d1d;color:#fecaca;padding:.6rem .9rem;border-radius:8px;font-size:.85rem;margin-bottom:1rem}
             </style></head><body><div class="card">
             <h1>Login local (Development)</h1>
-            <p>Sem Microsoft Entra. Escolha uma identidade mock para continuar o fluxo OpenIddict.</p>
+            <p>Sem Microsoft Entra. Informe a senha e escolha uma identidade mock para continuar o fluxo OpenIddict.</p>
             """);
+
+        if (!string.IsNullOrEmpty(error))
+        {
+            sb.Append($"""<div class="err">{System.Net.WebUtility.HtmlEncode(error)}</div>""");
+        }
 
         foreach (DevIdentityDefaults.DevUser u in DevIdentityDefaults.All)
         {
@@ -94,6 +111,7 @@ internal static class DevLoginEndpoints
                 <form method="post" action="{DevEntraAuthenticationHandler.DevLoginPath}">
                   <input type="hidden" name="oid" value="{u.EntraOid}">
                   <input type="hidden" name="returnUrl" value="{safeReturn}">
+                  <input type="password" name="password" placeholder="Senha" required autocomplete="current-password">
                   <button type="submit">{System.Net.WebUtility.HtmlEncode(u.DisplayName)}
                     <div class="role">{System.Net.WebUtility.HtmlEncode(u.RoleName)} · {System.Net.WebUtility.HtmlEncode(u.Email)}</div>
                   </button>
