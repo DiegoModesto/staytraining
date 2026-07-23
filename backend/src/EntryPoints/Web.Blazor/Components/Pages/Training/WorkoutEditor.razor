@@ -7,6 +7,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthState
+@inject ModalityCatalog Catalog
 @inject IJSRuntime JS
 
 <PageTitle>Montagem de treino</PageTitle>
@@ -43,9 +44,12 @@
                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="StartEditName" />
                 }
             }
-            <MudChip T="string" Size="Size.Small" Class="st-cat-chip"
-                     Style="@($"color:{CategoryDisplay.Color(_workout.Category)};border-color:{CategoryDisplay.Color(_workout.Category)}")"
-                     Variant="Variant.Outlined">@CategoryDisplay.Label(_workout.Category)</MudChip>
+            @if (_workout.ModalityId is not null)
+            {
+                <MudChip T="string" Size="Size.Small" Class="st-cat-chip"
+                         Style="@($"color:{CategoryDisplay.Color(_modality)};border-color:{CategoryDisplay.Color(_modality)}")"
+                         Variant="Variant.Outlined">@CategoryDisplay.Label(_modality)</MudChip>
+            }
             <MudSpacer />
             @if (!_isProfessor)
             {
@@ -128,6 +132,7 @@
     [Parameter] public Guid WorkoutId { get; set; }
 
     private WorkoutDetailDto? _workout;
+    private ModalityDto? _modality;
     private readonly List<WorkoutItemDto> _ordered = [];
     private Dictionary<Guid, string> _exerciseNames = new();
     private MudDropContainer<WorkoutItemDto>? _dropContainer;
@@ -169,6 +174,7 @@
             if (_workout is not null)
             {
                 _ordered.AddRange(_workout.Items.OrderBy(i => i.Order));
+                _modality = await Catalog.GetAsync(_workout.ModalityId, CancellationToken.None);
             }
         }
         catch (Exception ex)
@@ -256,7 +262,10 @@
         }
         finally
         {
+            // See AddItem: LoadAsync refreshed the container while _busy was true — refresh again so the
+            // item buttons don't stay disabled after a rename.
             _busy = false;
+            _dropContainer?.Refresh();
         }
     }
 
@@ -282,7 +291,12 @@
         }
         finally
         {
+            // LoadAsync refreshed the drop container while _busy was still true, so the item buttons
+            // (delete/up/down) rendered disabled. MudDropContainer only re-renders its items on an
+            // explicit Refresh(), so refresh again now that _busy is false — otherwise the newly added
+            // exercise (and its neighbours) keep a stale, disabled DELETE button until the next change.
             _busy = false;
+            _dropContainer?.Refresh();
         }
     }
 
@@ -301,7 +315,9 @@
         }
         finally
         {
+            // See AddItem: re-render the container with _busy cleared so remaining items' buttons re-enable.
             _busy = false;
+            _dropContainer?.Refresh();
         }
     }
 

@@ -1,19 +1,23 @@
 namespace Web.Blazor.Training;
 
-// Enums mirror the API domain enums (numeric JSON by default).
-public enum ExerciseCategory { Musculacao = 0, Funcional = 1, Boxe = 2, Aerobico = 3 }
-
 public enum HealthObservationKind { HealthIssue = 0, ProfessorNote = 1 }
 
 public sealed record MuscleGroupDto(Guid Id, string Name, string BodyRegion);
 
+// ---- Modalities (admin-managed catalog) ----
+public sealed record ModalityDto(Guid Id, string Name, string ColorHex, bool IsIntervalBased, int SortOrder);
+
+public sealed record CreateModalityRequest(string Name, string ColorHex, bool IsIntervalBased, int SortOrder);
+
+public sealed record UpdateModalityRequest(string Name, string ColorHex, bool IsIntervalBased, int SortOrder);
+
 public sealed record ExerciseListItemDto(
-    Guid Id, string Name, ExerciseCategory Category, Guid PrimaryMuscleGroupId, bool IsAerobic);
+    Guid Id, string Name, Guid ModalityId, string ModalityName, Guid PrimaryMuscleGroupId, bool IsAerobic);
 
 public sealed record CreateExerciseRequest(
     string Name,
     string? Description,
-    ExerciseCategory Category,
+    Guid ModalityId,
     Guid PrimaryMuscleGroupId,
     string? UsageExample,
     int DefaultSets,
@@ -22,7 +26,7 @@ public sealed record CreateExerciseRequest(
     bool IsAerobic);
 
 public sealed record WorkoutTemplateListItemDto(
-    Guid Id, string Name, ExerciseCategory? Category, bool IsSystemDefault, int ItemCount);
+    Guid Id, string Name, Guid? ModalityId, string? ModalityName, bool IsSystemDefault, int ItemCount);
 
 public sealed record StudentListItemDto(Guid Id, Guid UserId, string FullName, string? Email);
 
@@ -48,7 +52,8 @@ public sealed record StudentNoteDto(
 
 public sealed record AddStudentNoteRequest(string Content);
 
-public sealed record WorkoutListItemDto(Guid Id, string Name, ExerciseCategory? Category, int ItemCount);
+public sealed record WorkoutListItemDto(
+    Guid Id, string Name, Guid? ModalityId, string? ModalityName, int ItemCount);
 
 public sealed record CreateWorkoutFromTemplateRequest(Guid TemplateId, Guid OwnerStudentId, string? NameOverride);
 
@@ -76,7 +81,7 @@ public sealed record CreateWorkoutRequest(
     Guid OwnerStudentId,
     string Name,
     string? Description,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
     IReadOnlyCollection<WorkoutItemInput> Items);
 
 public sealed record WorkoutItemDto(
@@ -99,7 +104,8 @@ public sealed record WorkoutDetailDto(
     Guid? SourceTemplateId,
     string Name,
     string? Description,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
+    string? ModalityName,
     IReadOnlyList<WorkoutItemDto> Items);
 
 public sealed record ReorderWorkoutItemsRequest(IReadOnlyList<Guid> OrderedItemIds);
@@ -122,7 +128,7 @@ public sealed record TemplateItemInput(
 public sealed record CreateWorkoutTemplateRequest(
     string Name,
     string? Description,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
     bool IsSystemDefault,
     string? CreatorNotes,
     IReadOnlyCollection<TemplateItemInput> Items);
@@ -145,7 +151,8 @@ public sealed record WorkoutTemplateDetailDto(
     Guid Id,
     string Name,
     string? Description,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
+    string? ModalityName,
     bool IsSystemDefault,
     string? CreatorNotes,
     IReadOnlyList<TemplateItemDto> Items);

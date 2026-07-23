@@ -9,7 +9,7 @@
         }
         else
         {
-            <MudSelect T="Guid?" @bind-Value="_selectedRoleId" Label="Role" Required="true">
+            <MudSelect T="Guid?" @bind-Value="_selectedRoleId" Label="Role" Required="true" Placeholder="Select a role">
                 @foreach (RoleSummary role in _roles)
                 {
                     <MudSelectItem T="Guid?" Value="@role.Id">@role.Name</MudSelectItem>

@@ -5,6 +5,7 @@
 @inject ITrainingApiClient Api
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject ModalityCatalog Catalog
 
 <PageTitle>Execução de treino</PageTitle>
 
@@ -43,10 +44,13 @@
                         Exercício @(_current + 1) de @_items.Count
                     </MudText>
                 </div>
-                <MudChip T="string" Variant="Variant.Outlined" Class="st-cat-chip"
-                         Style="@($"color:{CategoryDisplay.Color(_workout.Category)};border-color:{CategoryDisplay.Color(_workout.Category)}")">
-                    @CategoryDisplay.Label(_workout.Category)
-                </MudChip>
+                @if (_workout.ModalityId is not null)
+                {
+                    <MudChip T="string" Variant="Variant.Outlined" Class="st-cat-chip"
+                             Style="@($"color:{CategoryDisplay.Color(_modality)};border-color:{CategoryDisplay.Color(_modality)}")">
+                        @CategoryDisplay.Label(_modality)
+                    </MudChip>
+                }
             </MudStack>
             <MudProgressLinear Color="Color.Primary" Value="@OverallPercent" Class="mb-4" Rounded Size="Size.Small" />
 
@@ -118,7 +122,7 @@
                 {
                     <MudButton FullWidth Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large"
                                StartIcon="@Icons.Material.Filled.Check" Disabled="_busy" OnClick="CompleteUnit">
-                        Concluir @(CategoryDisplay.IsIntervalBased(_workout.Category) ? "round" : "série")
+                        Concluir @(CategoryDisplay.IsIntervalBased(_modality) ? "round" : "série")
                     </MudButton>
                 }
                 else if (_next is not null)
@@ -144,6 +148,7 @@
     [Parameter] public Guid WorkoutId { get; set; }
 
     private WorkoutDetailDto? _workout;
+    private ModalityDto? _modality;
     private List<WorkoutItemDto> _items = [];
     private Dictionary<Guid, string> _exerciseNames = new();
     private Guid _sessionId;
@@ -169,6 +174,7 @@
             _exerciseNames = exercises.ToDictionary(e => e.Id, e => e.Name);
             _workout = await Api.GetWorkoutAsync(WorkoutId, CancellationToken.None);
             _items = _workout?.Items.OrderBy(i => i.Order).ToList() ?? [];
+            _modality = await Catalog.GetAsync(_workout?.ModalityId, CancellationToken.None);
 
             if (_items.Count > 0)
             {

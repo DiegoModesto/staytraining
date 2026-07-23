@@ -5,7 +5,13 @@ public interface ITrainingApiClient
 {
     Task<IReadOnlyList<MuscleGroupDto>> ListMuscleGroupsAsync(CancellationToken ct);
 
-    Task<IReadOnlyList<ExerciseListItemDto>> ListExercisesAsync(ExerciseCategory? category, CancellationToken ct);
+    // Modalities (admin-managed catalog)
+    Task<IReadOnlyList<ModalityDto>> ListModalitiesAsync(CancellationToken ct);
+    Task<Guid> CreateModalityAsync(CreateModalityRequest request, CancellationToken ct);
+    Task UpdateModalityAsync(Guid id, UpdateModalityRequest request, CancellationToken ct);
+    Task DeleteModalityAsync(Guid id, CancellationToken ct);
+
+    Task<IReadOnlyList<ExerciseListItemDto>> ListExercisesAsync(Guid? modalityId, CancellationToken ct);
     Task<Guid> CreateExerciseAsync(CreateExerciseRequest request, CancellationToken ct);
 
     Task<IReadOnlyList<WorkoutTemplateListItemDto>> ListTemplatesAsync(bool? onlySystemDefaults, CancellationToken ct);

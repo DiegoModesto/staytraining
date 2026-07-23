@@ -9,7 +9,7 @@ internal sealed class CreateExerciseCommandValidator : AbstractValidator<CreateE
         RuleFor(c => c.Name).NotEmpty().MaximumLength(200);
         RuleFor(c => c.Description).MaximumLength(2000);
         RuleFor(c => c.UsageExample).MaximumLength(4000);
-        RuleFor(c => c.Category).IsInEnum();
+        RuleFor(c => c.ModalityId).NotEmpty();
         RuleFor(c => c.PrimaryMuscleGroupId).NotEmpty();
 
         RuleFor(c => c.DefaultSets).GreaterThanOrEqualTo(0);

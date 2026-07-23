@@ -9,7 +9,7 @@
         }
         else
         {
-            <MudSelect T="Guid?" @bind-Value="_selectedPermissionId" Label="Permission" Required="true">
+            <MudSelect T="Guid?" @bind-Value="_selectedPermissionId" Label="Permission" Required="true" Placeholder="Select a permission">
                 @foreach (PermissionResponse p in _permissions)
                 {
                     <MudSelectItem T="Guid?" Value="@p.Id">@p.Code — @p.Description</MudSelectItem>

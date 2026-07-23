@@ -1,4 +1,4 @@
-using Domain.Exercises;
+using Domain.Modalities;
 using SharedKernel;
 
 namespace Domain.Workouts;
@@ -16,7 +16,10 @@ public sealed class WorkoutTemplate : Entity, IHasUpdatedAt
 
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public ExerciseCategory? Category { get; set; }
+
+    /// <summary>Optional modality tag for the template.</summary>
+    public Guid? ModalityId { get; set; }
+    public Modality? Modality { get; set; }
 
     /// <summary>When true, the template is read-only and may only be copied, never edited.</summary>
     public bool IsSystemDefault { get; set; }

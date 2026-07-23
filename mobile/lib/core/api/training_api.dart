@@ -16,9 +16,9 @@ class TrainingApi {
     return (r.data as List).map((e) => MuscleGroup.fromJson(e)).toList();
   }
 
-  Future<List<Exercise>> listExercises({ExerciseCategory? category}) async {
+  Future<List<Exercise>> listExercises({String? modalityId}) async {
     final r = await _client.dio.get('/api/v1/exercises',
-        queryParameters: category == null ? null : {'category': category.index});
+        queryParameters: modalityId == null ? null : {'modalityId': modalityId});
     return (r.data as List).map((e) => Exercise.fromJson(e)).toList();
   }
 

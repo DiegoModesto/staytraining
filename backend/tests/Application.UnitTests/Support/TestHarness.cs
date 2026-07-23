@@ -28,4 +28,20 @@ public static class TestHarness
 
     public static FakeUserContext User(Guid tenantId, Guid? userId = null, string? name = null) =>
         new(tenantId, userId ?? Guid.NewGuid(), name);
+
+    /// <summary>Adds a modality to the (global) catalog and returns its id, for tests that need a valid FK.</summary>
+    public static Guid SeedModality(ApplicationDbContext db, string name = "Musculação", bool isIntervalBased = false)
+    {
+        var modality = new Domain.Modalities.Modality
+        {
+            Id = Guid.NewGuid(),
+            Name = name,
+            ColorHex = "#4EA8FF",
+            IsIntervalBased = isIntervalBased,
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+        db.Modalities.Add(modality);
+        db.SaveChanges();
+        return modality.Id;
+    }
 }

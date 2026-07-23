@@ -1,18 +1,19 @@
 @using Web.Blazor.Training
 @inject ITrainingApiClient Api
 @inject ISnackbar Snackbar
+@inject ModalityCatalog Catalog
 
 <MudDialog>
     <DialogContent>
         <MudTextField @bind-Value="_name" Label="Nome" Required Class="mb-2" />
         <MudTextField @bind-Value="_description" Label="Descrição" Lines="2" Class="mb-2" />
-        <MudSelect @bind-Value="_category" Label="Categoria" Class="mb-2">
-            @foreach (var c in Enum.GetValues<ExerciseCategory>())
+        <MudSelect T="Guid?" @bind-Value="_modalityId" Label="Modalidade" Required Placeholder="Selecione a modalidade" Class="mb-2">
+            @foreach (var m in _modalities)
             {
-                <MudSelectItem Value="c">@c</MudSelectItem>
+                <MudSelectItem T="Guid?" Value="@m.Id">@m.Name</MudSelectItem>
             }
         </MudSelect>
-        <MudSelect T="Guid?" @bind-Value="_muscleGroupId" Label="Músculo principal" Class="mb-2">
+        <MudSelect T="Guid?" @bind-Value="_muscleGroupId" Label="Músculo principal" Required Placeholder="Selecione o músculo principal" Class="mb-2">
             @foreach (var m in _muscleGroups)
             {
                 <MudSelectItem T="Guid?" Value="@m.Id">@m.Name (@m.BodyRegion)</MudSelectItem>
@@ -36,9 +37,10 @@
     [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
 
     private IReadOnlyList<MuscleGroupDto> _muscleGroups = [];
+    private IReadOnlyList<ModalityDto> _modalities = [];
     private string _name = string.Empty;
     private string? _description;
-    private ExerciseCategory _category = ExerciseCategory.Musculacao;
+    private Guid? _modalityId;
     private Guid? _muscleGroupId;
     private string? _usageExample;
     private int _sets = 3;
@@ -52,10 +54,12 @@
         try
         {
             _muscleGroups = await Api.ListMuscleGroupsAsync(CancellationToken.None);
+            _modalities = await Catalog.AllAsync(CancellationToken.None);
+            _modalityId = _modalities.FirstOrDefault()?.Id;
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Falha ao carregar músculos: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Falha ao carregar dados: {ex.Message}", Severity.Error);
         }
     }
 
@@ -63,9 +67,9 @@
 
     private async Task Submit()
     {
-        if (string.IsNullOrWhiteSpace(_name) || _muscleGroupId is null)
+        if (string.IsNullOrWhiteSpace(_name) || _muscleGroupId is null || _modalityId is null)
         {
-            Snackbar.Add("Informe o nome e o músculo principal.", Severity.Warning);
+            Snackbar.Add("Informe o nome, a modalidade e o músculo principal.", Severity.Warning);
             return;
         }
 
@@ -73,7 +77,7 @@
         try
         {
             await Api.CreateExerciseAsync(new CreateExerciseRequest(
-                _name, _description, _category, _muscleGroupId.Value, _usageExample,
+                _name, _description, _modalityId.Value, _muscleGroupId.Value, _usageExample,
                 _sets, _reps, _rest, _isAerobic), CancellationToken.None);
             Snackbar.Add("Exercício criado.", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));

@@ -24,7 +24,7 @@ public sealed class CreateWorkoutTemplateCommandHandler(
             TenantId = tenantId,
             Name = command.Name,
             Description = command.Description,
-            Category = command.Category,
+            ModalityId = command.ModalityId,
             IsSystemDefault = command.IsSystemDefault,
             CreatorNotes = command.CreatorNotes,
             CreatedAt = DateTimeOffset.UtcNow,

@@ -3,6 +3,7 @@ namespace Web.API.Endpoints;
 public static class Tags
 {
     public const string SampleEntity = "Sample Entity";
+    public const string Modalities = "Modalities";
     public const string MuscleGroups = "Muscle Groups";
     public const string Exercises = "Exercises";
     public const string WorkoutTemplates = "Workout Templates";

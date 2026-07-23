@@ -20,10 +20,10 @@ public sealed class ListExercisesQueryHandler(
         List<ExerciseListItemResponse> items = await dbContext.Exercises
             .Where(e => !e.IsDeleted
                 && (tenantId == null || e.TenantId == tenantId)
-                && (query.Category == null || e.Category == query.Category))
+                && (query.ModalityId == null || e.ModalityId == query.ModalityId))
             .OrderBy(e => e.Name)
             .Select(e => new ExerciseListItemResponse(
-                e.Id, e.Name, e.Category, e.PrimaryMuscleGroupId, e.IsAerobic))
+                e.Id, e.Name, e.ModalityId, e.Modality!.Name, e.PrimaryMuscleGroupId, e.IsAerobic))
             .ToListAsync(cancellationToken);
 
         return items;

@@ -1,27 +1,18 @@
 namespace Web.Blazor.Training;
 
-/// <summary>Portuguese labels + VOLT category colors for <see cref="ExerciseCategory"/> (UI helper).</summary>
+/// <summary>
+/// UI helper for rendering a <see cref="ModalityDto"/> (label + VOLT accent color). Modalities are
+/// now admin-managed data, so pages resolve the <see cref="ModalityDto"/> from the loaded catalog
+/// (by id) and pass it here — there is no fixed enum anymore.
+/// </summary>
 public static class CategoryDisplay
 {
-    public static string Label(ExerciseCategory? category) => category switch
-    {
-        ExerciseCategory.Musculacao => "Musculação",
-        ExerciseCategory.Funcional => "Funcional",
-        ExerciseCategory.Boxe => "Boxe",
-        ExerciseCategory.Aerobico => "Aeróbico",
-        _ => "—",
-    };
+    private const string Fallback = "#9AA4B2";
 
-    public static string Color(ExerciseCategory? category) => category switch
-    {
-        ExerciseCategory.Musculacao => "#4EA8FF",
-        ExerciseCategory.Funcional => "#2FD37A",
-        ExerciseCategory.Boxe => "#FF4757",
-        ExerciseCategory.Aerobico => "#FFB020",
-        _ => "#9AA4B2",
-    };
+    public static string Label(ModalityDto? modality) => modality?.Name ?? "—";
 
-    /// <summary>True for modalities driven by work/interval rounds rather than sets×reps.</summary>
-    public static bool IsIntervalBased(ExerciseCategory? category) =>
-        category is ExerciseCategory.Boxe or ExerciseCategory.Aerobico;
+    public static string Color(ModalityDto? modality) =>
+        string.IsNullOrWhiteSpace(modality?.ColorHex) ? Fallback : modality!.ColorHex;
+
+    public static bool IsIntervalBased(ModalityDto? modality) => modality?.IsIntervalBased ?? false;
 }

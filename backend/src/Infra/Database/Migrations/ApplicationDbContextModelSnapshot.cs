@@ -262,12 +262,6 @@ namespace Infra.Database.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("category");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -313,6 +307,10 @@ namespace Infra.Database.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
+                    b.Property<Guid>("ModalityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modality_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -344,11 +342,14 @@ namespace Infra.Database.Migrations
                     b.HasKey("Id")
                         .HasName("pk_exercises");
 
-                    b.HasIndex("TenantId", "Category")
-                        .HasDatabaseName("ix_exercises_tenant_id_category");
+                    b.HasIndex("ModalityId")
+                        .HasDatabaseName("ix_exercises_modality_id");
 
                     b.HasIndex("TenantId", "Id")
                         .HasDatabaseName("ix_exercises_tenant_id_id");
+
+                    b.HasIndex("TenantId", "ModalityId")
+                        .HasDatabaseName("ix_exercises_tenant_id_modality_id");
 
                     b.ToTable("exercises", "public");
                 });
@@ -396,6 +397,59 @@ namespace Infra.Database.Migrations
                         .HasDatabaseName("ix_exercise_media_exercise_id");
 
                     b.ToTable("exercise_media", "public");
+                });
+
+            modelBuilder.Entity("Domain.Modalities.Modality", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ColorHex")
+                        .IsRequired()
+                        .HasMaxLength(9)
+                        .HasColumnType("character varying(9)")
+                        .HasColumnName("color_hex");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsIntervalBased")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_interval_based");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_modalities");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_modalities_name");
+
+                    b.ToTable("modalities", "public");
                 });
 
             modelBuilder.Entity("Domain.MuscleGroups.MuscleGroup", b =>
@@ -700,11 +754,6 @@ namespace Infra.Database.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("Category")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("category");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -721,6 +770,10 @@ namespace Infra.Database.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModalityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modality_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -746,6 +799,9 @@ namespace Infra.Database.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_workouts");
+
+                    b.HasIndex("ModalityId")
+                        .HasDatabaseName("ix_workouts_modality_id");
 
                     b.HasIndex("TenantId", "OwnerStudentId")
                         .HasDatabaseName("ix_workouts_tenant_id_owner_student_id");
@@ -826,11 +882,6 @@ namespace Infra.Database.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("Category")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("category");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -857,6 +908,10 @@ namespace Infra.Database.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_system_default");
 
+                    b.Property<Guid?>("ModalityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modality_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -874,6 +929,9 @@ namespace Infra.Database.Migrations
                     b.HasKey("Id")
                         .HasName("pk_workout_templates");
 
+                    b.HasIndex("ModalityId")
+                        .HasDatabaseName("ix_workout_templates_modality_id");
+
                     b.HasIndex("TenantId", "IsSystemDefault")
                         .HasDatabaseName("ix_workout_templates_tenant_id_is_system_default");
 
@@ -888,6 +946,18 @@ namespace Infra.Database.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_exercise_notes_workout_sessions_workout_session_id");
+                });
+
+            modelBuilder.Entity("Domain.Exercises.Exercise", b =>
+                {
+                    b.HasOne("Domain.Modalities.Modality", "Modality")
+                        .WithMany()
+                        .HasForeignKey("ModalityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_exercises_modalities_modality_id");
+
+                    b.Navigation("Modality");
                 });
 
             modelBuilder.Entity("Domain.Exercises.ExerciseMedia", b =>
@@ -930,6 +1000,17 @@ namespace Infra.Database.Migrations
                         .HasConstraintName("fk_template_items_workout_templates_workout_template_id");
                 });
 
+            modelBuilder.Entity("Domain.Workouts.Workout", b =>
+                {
+                    b.HasOne("Domain.Modalities.Modality", "Modality")
+                        .WithMany()
+                        .HasForeignKey("ModalityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_workouts_modalities_modality_id");
+
+                    b.Navigation("Modality");
+                });
+
             modelBuilder.Entity("Domain.Workouts.WorkoutItem", b =>
                 {
                     b.HasOne("Domain.Workouts.Workout", null)
@@ -938,6 +1019,17 @@ namespace Infra.Database.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_workout_items_workouts_workout_id");
+                });
+
+            modelBuilder.Entity("Domain.Workouts.WorkoutTemplate", b =>
+                {
+                    b.HasOne("Domain.Modalities.Modality", "Modality")
+                        .WithMany()
+                        .HasForeignKey("ModalityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_workout_templates_modalities_modality_id");
+
+                    b.Navigation("Modality");
                 });
 
             modelBuilder.Entity("Domain.Execution.WorkoutSession", b =>

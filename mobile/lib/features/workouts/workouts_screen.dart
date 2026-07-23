@@ -88,7 +88,7 @@ class _WorkoutsScreenState extends ConsumerState<WorkoutsScreen> {
                 child: ListTile(
                   leading: const Icon(Icons.fitness_center),
                   title: Text(w.name),
-                  subtitle: Text('${w.itemCount} exercícios${w.category != null ? ' • ${w.category!.label}' : ''}'),
+                  subtitle: Text('${w.itemCount} exercícios${w.modalityName != null ? ' • ${w.modalityName!}' : ''}'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.go('/workouts/${w.id}'),
                 ),

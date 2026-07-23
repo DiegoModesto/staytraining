@@ -1,12 +1,11 @@
 using Application.Abstractions.Messaging;
-using Domain.Exercises;
 
 namespace Application.Exercises.Create;
 
 public sealed record CreateExerciseCommand(
     string Name,
     string? Description,
-    ExerciseCategory Category,
+    Guid ModalityId,
     Guid PrimaryMuscleGroupId,
     IReadOnlyCollection<Guid>? SecondaryMuscleGroupIds,
     string? UsageExample,

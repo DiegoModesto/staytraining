@@ -22,7 +22,8 @@ public sealed class ListWorkoutsQueryHandler(
                 && (tenantId == null || w.TenantId == tenantId)
                 && (query.OwnerStudentId == null || w.OwnerStudentId == query.OwnerStudentId))
             .OrderBy(w => w.Name)
-            .Select(w => new WorkoutListItemResponse(w.Id, w.Name, w.Category, w.Items.Count))
+            .Select(w => new WorkoutListItemResponse(
+                w.Id, w.Name, w.ModalityId, w.Modality != null ? w.Modality.Name : null, w.Items.Count))
             .ToListAsync(cancellationToken);
 
         return items;

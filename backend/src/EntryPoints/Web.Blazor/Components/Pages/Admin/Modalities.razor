@@ -1,0 +1,159 @@
+@page "/admin/modalities"
+@attribute [Authorize]
+@using Web.Blazor.Training
+@using Web.Blazor.Components.Shared
+@inject ITrainingApiClient Api
+@inject ModalityCatalog Catalog
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Modalidades</PageTitle>
+
+@* Managing the modality catalog is admin-only — gated by the dedicated modality.write permission. *@
+<PermissionView Permission="modality.write">
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h4">Modalidades</MudText>
+        <MudSpacer />
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreate">Nova modalidade</MudButton>
+    </MudStack>
+
+    <MudText Typo="Typo.body2" Class="mb-3" Style="color:var(--mud-palette-text-secondary)">
+        As modalidades classificam exercícios, treinos e modelos. Dê um duplo-clique numa linha para
+        editar. Uma modalidade em uso por exercícios não pode ser excluída.
+    </MudText>
+
+    <MudTable Items="_items" Hover Loading="_loading" Dense Breakpoint="Breakpoint.Sm"
+              T="ModalityDto" OnRowClick="OnRowClick" Style="cursor:pointer">
+        <HeaderContent>
+            <MudTh>Cor</MudTh>
+            <MudTh>Nome</MudTh>
+            <MudTh>Intervalada</MudTh>
+            <MudTh Style="text-align:right">Ações</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Cor">
+                <div style="@($"width:24px;height:24px;border-radius:6px;background:{context.ColorHex};border:1px solid var(--mud-palette-lines-default)")"></div>
+            </MudTd>
+            <MudTd DataLabel="Nome">@context.Name</MudTd>
+            <MudTd DataLabel="Intervalada">@(context.IsIntervalBased ? "Sim" : "Não")</MudTd>
+            <MudTd DataLabel="Ações" Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               Disabled="_busy" OnClick="@(() => Delete(context))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>Nenhuma modalidade cadastrada.</MudText></NoRecordsContent>
+    </MudTable>
+</PermissionView>
+
+@code {
+    private IReadOnlyList<ModalityDto> _items = [];
+    private bool _loading = true;
+    private bool _busy;
+    private readonly DoubleClickDetector _dbl = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _items = await Api.ListModalitiesAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar modalidades: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnRowClick(TableRowClickEventArgs<ModalityDto> args)
+    {
+        if (args.Item is not null && _dbl.IsDoubleClick(args.Item))
+        {
+            await OpenEdit(args.Item);
+        }
+    }
+
+    private async Task OpenCreate()
+    {
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.ModalityDialog>("Nova modalidade");
+        DialogResult? r = await dlg.Result;
+        if (r is null || r.Canceled || r.Data is not Dialogs.ModalityDialog.Result v)
+        {
+            return;
+        }
+
+        try
+        {
+            // Order is no longer edited in the UI — append new modalities at the end.
+            await Api.CreateModalityAsync(
+                new CreateModalityRequest(v.Name, v.ColorHex, v.IsIntervalBased, _items.Count), CancellationToken.None);
+            Snackbar.Add("Modalidade criada.", Severity.Success);
+            Catalog.Invalidate();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao criar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenEdit(ModalityDto modality)
+    {
+        var parameters = new DialogParameters<Dialogs.ModalityDialog> { { x => x.Modality, modality } };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.ModalityDialog>("Editar modalidade", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is null || r.Canceled || r.Data is not Dialogs.ModalityDialog.Result v)
+        {
+            return;
+        }
+
+        try
+        {
+            // Preserve the modality's existing sort order (not shown in the dialog).
+            await Api.UpdateModalityAsync(modality.Id,
+                new UpdateModalityRequest(v.Name, v.ColorHex, v.IsIntervalBased, modality.SortOrder), CancellationToken.None);
+            Snackbar.Add("Modalidade atualizada.", Severity.Success);
+            Catalog.Invalidate();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao atualizar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Delete(ModalityDto modality)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Excluir modalidade",
+            $"Excluir \"{modality.Name}\"? Exercícios que a utilizam impedem a exclusão.",
+            yesText: "Excluir", cancelText: "Cancelar");
+        if (confirm != true)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.DeleteModalityAsync(modality.Id, CancellationToken.None);
+            Snackbar.Add("Modalidade excluída.", Severity.Success);
+            Catalog.Invalidate();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao excluir (em uso?): {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

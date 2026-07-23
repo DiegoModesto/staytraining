@@ -9,7 +9,7 @@
                    ToStringFunc="@(id => _exercises.FirstOrDefault(e => e.Id == id)?.Name ?? string.Empty)">
             @foreach (var e in _exercises)
             {
-                <MudSelectItem T="Guid" Value="e.Id">@e.Name (@Label(e.Category))</MudSelectItem>
+                <MudSelectItem T="Guid" Value="e.Id">@e.Name (@e.ModalityName)</MudSelectItem>
             }
         </MudSelect>
 
@@ -100,13 +100,4 @@
 
     /// <summary>The chosen item plus the exercise display name (so builders can list it without a lookup).</summary>
     public sealed record PickedItem(WorkoutItemInput Item, string ExerciseName);
-
-    private static string Label(ExerciseCategory c) => c switch
-    {
-        ExerciseCategory.Musculacao => "Musculação",
-        ExerciseCategory.Funcional => "Funcional",
-        ExerciseCategory.Boxe => "Boxe",
-        ExerciseCategory.Aerobico => "Aeróbico",
-        _ => c.ToString(),
-    };
 }

@@ -29,7 +29,7 @@ public sealed class CreateWorkoutCommandHandler(
             OwnerStudentId = ownerStudentId,
             Name = command.Name,
             Description = command.Description,
-            Category = command.Category,
+            ModalityId = command.ModalityId,
             CreatedAt = DateTimeOffset.UtcNow,
         };
 

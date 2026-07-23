@@ -24,13 +24,15 @@ public static class DevIdentityDefaults
         string RoleName,
         IReadOnlyCollection<string> Permissions);
 
+    // The dev professor doubles as the training administrator so the modality-management UI is
+    // reachable locally: teacher permissions + the admin-only modality.write capability.
     public static readonly DevUser Professor = new(
         UserId: Guid.Parse("22222222-2222-2222-2222-222222222222"),
         EntraOid: Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
         Email: "diego.modesto@example.com",
         DisplayName: "Diego Modesto",
         RoleName: "Professor",
-        Permissions: PermissionCodes.TeacherRole);
+        Permissions: [.. PermissionCodes.TeacherRole.Union(PermissionCodes.Admin)]);
 
     public static readonly DevUser Student = new(
         UserId: Guid.Parse("33333333-3333-3333-3333-333333333333"),

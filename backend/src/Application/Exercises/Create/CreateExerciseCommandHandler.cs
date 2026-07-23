@@ -2,6 +2,8 @@ using Application.Abstractions.Authentication;
 using Application.Abstractions.Data;
 using Application.Abstractions.Messaging;
 using Domain.Exercises;
+using Domain.Modalities;
+using Microsoft.EntityFrameworkCore;
 using SharedKernel;
 
 namespace Application.Exercises.Create;
@@ -18,13 +20,20 @@ public sealed class CreateExerciseCommandHandler(
         Guid tenantId = userContext.TenantId
             ?? throw new InvalidOperationException("TenantId is required to create an Exercise.");
 
+        bool modalityExists = await dbContext.Modalities
+            .AnyAsync(m => m.Id == command.ModalityId, cancellationToken);
+        if (!modalityExists)
+        {
+            return Result.Failure<Guid>(ModalityErrors.NotFound(command.ModalityId));
+        }
+
         var exercise = new Exercise
         {
             Id = Guid.NewGuid(),
             TenantId = tenantId,
             Name = command.Name,
             Description = command.Description,
-            Category = command.Category,
+            ModalityId = command.ModalityId,
             PrimaryMuscleGroupId = command.PrimaryMuscleGroupId,
             SecondaryMuscleGroupIds = command.SecondaryMuscleGroupIds?.ToList() ?? [],
             UsageExample = command.UsageExample,

@@ -4,7 +4,7 @@
 
 <MudDialog>
     <DialogContent>
-        <MudSelect T="Guid?" @bind-Value="_templateId" Label="Modelo" Class="mb-2">
+        <MudSelect T="Guid?" @bind-Value="_templateId" Label="Modelo" Required Placeholder="Selecione o modelo" Class="mb-2">
             @foreach (var t in _templates)
             {
                 <MudSelectItem T="Guid?" Value="@t.Id">@t.Name (@t.ItemCount ex.)</MudSelectItem>

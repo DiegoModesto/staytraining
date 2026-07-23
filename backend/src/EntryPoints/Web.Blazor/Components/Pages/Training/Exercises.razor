@@ -25,8 +25,8 @@
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Nome">@context.Name</MudTd>
-            <MudTd DataLabel="Categoria">@context.Category</MudTd>
-            <MudTd DataLabel="Aeróbico">@(context.IsAerobic ? "Sim" : "Não")</MudTd>
+            <MudTd DataLabel="Categoria">@context.ModalityName</MudTd>
+            <MudTd DataLabel="Aeróbico"><MudCheckBox T="bool" Value="context.IsAerobic" ReadOnly Dense /></MudTd>
         </RowTemplate>
         <NoRecordsContent><MudText>Nenhum exercício cadastrado.</MudText></NoRecordsContent>
     </MudTable>

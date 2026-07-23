@@ -2,6 +2,7 @@ using Application.Abstractions.Data;
 using Domain.Devices;
 using Domain.Execution;
 using Domain.Exercises;
+using Domain.Modalities;
 using Domain.MuscleGroups;
 using Domain.SampleEntities;
 using Domain.Students;
@@ -16,6 +17,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 {
     public DbSet<SampleEntity> SampleEntities { get; set; }
 
+    public DbSet<Modality> Modalities { get; set; }
     public DbSet<MuscleGroup> MuscleGroups { get; set; }
     public DbSet<Exercise> Exercises { get; set; }
     public DbSet<ExerciseMedia> ExerciseMedia { get; set; }

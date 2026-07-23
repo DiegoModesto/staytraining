@@ -5,6 +5,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject ModalityCatalog Catalog
 
 <PageTitle>Novo modelo</PageTitle>
 
@@ -18,11 +19,11 @@
         <MudItem xs="12" md="5">
             <MudPaper Class="pa-4" Outlined Elevation="0">
                 <MudTextField @bind-Value="_name" Label="Nome do modelo" Required MaxLength="200" Class="mb-3" />
-                <MudSelect T="ExerciseCategory?" @bind-Value="_category" Label="Modalidade" Clearable Class="mb-3">
-                    <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Musculacao)">Musculação</MudSelectItem>
-                    <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Funcional)">Funcional</MudSelectItem>
-                    <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Boxe)">Boxe</MudSelectItem>
-                    <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Aerobico)">Aeróbico</MudSelectItem>
+                <MudSelect T="Guid?" @bind-Value="_modalityId" Label="Modalidade (opcional)" Placeholder="Selecione a modalidade" Class="mb-3">
+                    @foreach (var m in _modalities)
+                    {
+                        <MudSelectItem T="Guid?" Value="@m.Id">@m.Name</MudSelectItem>
+                    }
                 </MudSelect>
                 <MudTextField @bind-Value="_notes" Label="Notas do criador (opcional)" Lines="2" Class="mb-3" />
                 <MudButton FullWidth Color="Color.Primary" Variant="Variant.Filled"
@@ -73,10 +74,23 @@
 
 @code {
     private string _name = string.Empty;
-    private ExerciseCategory? _category;
+    private Guid? _modalityId;
     private string? _notes;
     private bool _busy;
+    private IReadOnlyList<ModalityDto> _modalities = [];
     private readonly List<Dialogs.AddWorkoutItemDialog.PickedItem> _items = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _modalities = await Catalog.AllAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar modalidades: {ex.Message}", Severity.Error);
+        }
+    }
 
     private static string Prescription(WorkoutItemInput i) =>
         i.Rounds is > 0
@@ -115,7 +129,7 @@
                 CreatorNotes: e.Item.ProfessorComment)).ToList();
 
             var request = new CreateWorkoutTemplateRequest(
-                _name.Trim(), null, _category, IsSystemDefault: false, _notes, items);
+                _name.Trim(), null, _modalityId, IsSystemDefault: false, _notes, items);
 
             await Api.CreateTemplateAsync(request, CancellationToken.None);
             Snackbar.Add("Modelo criado.", Severity.Success);

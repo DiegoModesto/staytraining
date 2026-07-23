@@ -4,6 +4,7 @@ using Application.SampleEntities.GetById;
 using Domain.Devices;
 using Domain.Execution;
 using Domain.Exercises;
+using Domain.Modalities;
 using Domain.MuscleGroups;
 using Domain.SampleEntities;
 using Domain.Students;
@@ -20,6 +21,7 @@ public class GetSampleEntityByIdQueryHandlerTests
         : DbContext(options), IApplicationDbContext
     {
         public DbSet<SampleEntity> SampleEntities => Set<SampleEntity>();
+        public DbSet<Modality> Modalities => Set<Modality>();
         public DbSet<MuscleGroup> MuscleGroups => Set<MuscleGroup>();
         public DbSet<Exercise> Exercises => Set<Exercise>();
         public DbSet<ExerciseMedia> ExerciseMedia => Set<ExerciseMedia>();

@@ -16,16 +16,17 @@ public class SyncTests
         var tenant = Guid.NewGuid();
         var me = Guid.NewGuid();
         await using var db = TestHarness.NewContext();
+        Guid modalityId = TestHarness.SeedModality(db);
 
         db.Exercises.Add(new Exercise
         {
             Id = Guid.NewGuid(), TenantId = tenant, Name = "Ativo",
-            Category = ExerciseCategory.Musculacao, PrimaryMuscleGroupId = Guid.NewGuid(),
+            ModalityId = modalityId, PrimaryMuscleGroupId = Guid.NewGuid(),
         });
         db.Exercises.Add(new Exercise
         {
             Id = Guid.NewGuid(), TenantId = tenant, Name = "Removido", IsDeleted = true,
-            Category = ExerciseCategory.Musculacao, PrimaryMuscleGroupId = Guid.NewGuid(),
+            ModalityId = modalityId, PrimaryMuscleGroupId = Guid.NewGuid(),
         });
         db.Workouts.Add(new Workout { Id = Guid.NewGuid(), TenantId = tenant, OwnerStudentId = me, Name = "W" });
         await db.SaveChangesAsync();

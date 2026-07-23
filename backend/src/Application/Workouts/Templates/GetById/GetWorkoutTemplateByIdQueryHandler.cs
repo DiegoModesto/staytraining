@@ -26,7 +26,8 @@ public sealed class GetWorkoutTemplateByIdQueryHandler(
                 t.Id,
                 t.Name,
                 t.Description,
-                t.Category,
+                t.ModalityId,
+                t.Modality != null ? t.Modality.Name : null,
                 t.IsSystemDefault,
                 t.CreatorNotes,
                 t.Items

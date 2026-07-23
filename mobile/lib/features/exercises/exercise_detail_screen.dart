@@ -42,7 +42,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
             children: [
               Text(e.name, style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 4),
-              Chip(label: Text(e.category.label)),
+              Chip(label: Text(e.modalityName)),
               const SizedBox(height: 16),
               _MediaSection(exercise: e),
               if (e.description != null) ...[

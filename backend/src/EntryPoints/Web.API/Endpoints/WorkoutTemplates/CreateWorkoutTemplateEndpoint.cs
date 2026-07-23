@@ -1,7 +1,6 @@
 using Application.Abstractions.Messaging;
 using Application.Workouts;
 using Application.Workouts.Templates.Create;
-using Domain.Exercises;
 using Web.API.Extensions;
 using Web.API.Infrastructure;
 
@@ -12,7 +11,7 @@ internal sealed class CreateWorkoutTemplateEndpoint : IEndpoint
     public sealed record Request(
         string Name,
         string? Description,
-        ExerciseCategory? Category,
+        Guid? ModalityId,
         bool IsSystemDefault,
         string? CreatorNotes,
         IReadOnlyCollection<TemplateItemInput> Items);
@@ -27,7 +26,7 @@ internal sealed class CreateWorkoutTemplateEndpoint : IEndpoint
                 var command = new CreateWorkoutTemplateCommand(
                     request.Name,
                     request.Description,
-                    request.Category,
+                    request.ModalityId,
                     request.IsSystemDefault,
                     request.CreatorNotes,
                     request.Items ?? []);

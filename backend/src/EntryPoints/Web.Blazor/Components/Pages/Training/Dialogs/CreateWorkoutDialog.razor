@@ -1,16 +1,17 @@
 @using Web.Blazor.Training
 @inject ITrainingApiClient Api
 @inject ISnackbar Snackbar
+@inject ModalityCatalog Catalog
 
 <MudDialog>
     <DialogContent>
         <MudTextField @bind-Value="_name" Label="Nome do treino" Required Immediate
                       Class="mb-3" MaxLength="200" />
-        <MudSelect T="ExerciseCategory?" @bind-Value="_category" Label="Modalidade" Clearable Class="mb-3">
-            <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Musculacao)">Musculação</MudSelectItem>
-            <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Funcional)">Funcional</MudSelectItem>
-            <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Boxe)">Boxe</MudSelectItem>
-            <MudSelectItem T="ExerciseCategory?" Value="@((ExerciseCategory?)ExerciseCategory.Aerobico)">Aeróbico</MudSelectItem>
+        <MudSelect T="Guid?" @bind-Value="_modalityId" Label="Modalidade (opcional)" Placeholder="Selecione a modalidade" Class="mb-3">
+            @foreach (var m in _modalities)
+            {
+                <MudSelectItem T="Guid?" Value="@m.Id">@m.Name</MudSelectItem>
+            }
         </MudSelect>
         <MudTextField @bind-Value="_description" Label="Descrição (opcional)" Lines="2" />
     </DialogContent>
@@ -28,9 +29,22 @@
     [Parameter] public Guid OwnerStudentId { get; set; }
 
     private string _name = string.Empty;
-    private ExerciseCategory? _category;
+    private Guid? _modalityId;
     private string? _description;
     private bool _busy;
+    private IReadOnlyList<ModalityDto> _modalities = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _modalities = await Catalog.AllAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar modalidades: {ex.Message}", Severity.Error);
+        }
+    }
 
     private void Cancel() => Dialog.Cancel();
 
@@ -45,7 +59,7 @@
         _busy = true;
         try
         {
-            var request = new CreateWorkoutRequest(OwnerStudentId, _name.Trim(), _description, _category, []);
+            var request = new CreateWorkoutRequest(OwnerStudentId, _name.Trim(), _description, _modalityId, []);
             Guid id = await Api.CreateWorkoutAsync(request, CancellationToken.None);
             Dialog.Close(DialogResult.Ok(id));
         }

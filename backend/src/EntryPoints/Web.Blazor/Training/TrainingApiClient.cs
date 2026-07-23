@@ -23,12 +23,24 @@ internal sealed class TrainingApiClient(
     public Task<IReadOnlyList<MuscleGroupDto>> ListMuscleGroupsAsync(CancellationToken ct)
         => GetListAsync<MuscleGroupDto>($"{Base}/muscle-groups", ct);
 
-    public Task<IReadOnlyList<ExerciseListItemDto>> ListExercisesAsync(ExerciseCategory? category, CancellationToken ct)
+    public Task<IReadOnlyList<ModalityDto>> ListModalitiesAsync(CancellationToken ct)
+        => GetListAsync<ModalityDto>($"{Base}/modalities", ct);
+
+    public async Task<Guid> CreateModalityAsync(CreateModalityRequest request, CancellationToken ct)
+        => (await PostAsync<CreateModalityRequest, IdResponse>($"{Base}/modalities", request, ct)).Id;
+
+    public Task UpdateModalityAsync(Guid id, UpdateModalityRequest request, CancellationToken ct)
+        => SendWithBodyAsync(HttpMethod.Put, $"{Base}/modalities/{id}", request, ct);
+
+    public Task DeleteModalityAsync(Guid id, CancellationToken ct)
+        => SendNoBodyAsync(HttpMethod.Delete, $"{Base}/modalities/{id}", ct);
+
+    public Task<IReadOnlyList<ExerciseListItemDto>> ListExercisesAsync(Guid? modalityId, CancellationToken ct)
     {
         string path = $"{Base}/exercises";
-        if (category is not null)
+        if (modalityId is not null)
         {
-            path += $"?category={(int)category}";
+            path += $"?modalityId={modalityId}";
         }
 
         return GetListAsync<ExerciseListItemDto>(path, ct);

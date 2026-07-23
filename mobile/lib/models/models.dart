@@ -1,21 +1,10 @@
 // Data models mirroring the StayTraining Web.API responses.
 // Enums map to the API's numeric enum values (index-based).
-
-enum ExerciseCategory { musculacao, funcional, boxe, aerobico }
+//
+// "Modalidade" used to be a fixed enum; it is now an admin-managed catalog. Responses carry the
+// modality id plus a denormalized modality name (label), so this app just shows the name.
 
 enum ExerciseMediaKind { gif, uploadedVideo, youtubeUrl, muscleImage }
-
-ExerciseCategory categoryFromInt(int v) =>
-    ExerciseCategory.values[(v >= 0 && v < ExerciseCategory.values.length) ? v : 0];
-
-extension ExerciseCategoryLabel on ExerciseCategory {
-  String get label => switch (this) {
-        ExerciseCategory.musculacao => 'Musculação',
-        ExerciseCategory.funcional => 'Funcional',
-        ExerciseCategory.boxe => 'Boxe',
-        ExerciseCategory.aerobico => 'Aeróbico',
-      };
-}
 
 class MuscleGroup {
   MuscleGroup({required this.id, required this.name, required this.bodyRegion});
@@ -50,7 +39,8 @@ class Exercise {
     required this.id,
     required this.name,
     this.description,
-    required this.category,
+    required this.modalityId,
+    required this.modalityName,
     required this.primaryMuscleGroupId,
     this.usageExample,
     required this.defaultSets,
@@ -66,7 +56,8 @@ class Exercise {
   final String id;
   final String name;
   final String? description;
-  final ExerciseCategory category;
+  final String modalityId;
+  final String modalityName;
   final String primaryMuscleGroupId;
   final String? usageExample;
   final int defaultSets;
@@ -82,7 +73,8 @@ class Exercise {
         id: j['id'] as String,
         name: j['name'] as String,
         description: j['description'] as String?,
-        category: categoryFromInt((j['category'] as int?) ?? 0),
+        modalityId: (j['modalityId'] ?? '') as String,
+        modalityName: (j['modalityName'] ?? '') as String,
         primaryMuscleGroupId: (j['primaryMuscleGroupId'] ?? '') as String,
         usageExample: j['usageExample'] as String?,
         defaultSets: (j['defaultSets'] as int?) ?? 0,
@@ -152,7 +144,8 @@ class Workout {
     this.sourceTemplateId,
     required this.name,
     this.description,
-    this.category,
+    this.modalityId,
+    this.modalityName,
     this.items = const [],
   });
 
@@ -161,7 +154,8 @@ class Workout {
   final String? sourceTemplateId;
   final String name;
   final String? description;
-  final ExerciseCategory? category;
+  final String? modalityId;
+  final String? modalityName;
   final List<WorkoutItem> items;
 
   factory Workout.fromJson(Map<String, dynamic> j) => Workout(
@@ -170,7 +164,8 @@ class Workout {
         sourceTemplateId: j['sourceTemplateId'] as String?,
         name: j['name'] as String,
         description: j['description'] as String?,
-        category: j['category'] == null ? null : categoryFromInt(j['category'] as int),
+        modalityId: j['modalityId'] as String?,
+        modalityName: j['modalityName'] as String?,
         items: ((j['items'] as List?) ?? [])
             .map((i) => WorkoutItem.fromJson(i as Map<String, dynamic>))
             .toList(),
@@ -178,16 +173,18 @@ class Workout {
 }
 
 class WorkoutListItem {
-  WorkoutListItem({required this.id, required this.name, this.category, required this.itemCount});
+  WorkoutListItem({required this.id, required this.name, this.modalityId, this.modalityName, required this.itemCount});
   final String id;
   final String name;
-  final ExerciseCategory? category;
+  final String? modalityId;
+  final String? modalityName;
   final int itemCount;
 
   factory WorkoutListItem.fromJson(Map<String, dynamic> j) => WorkoutListItem(
         id: j['id'] as String,
         name: j['name'] as String,
-        category: j['category'] == null ? null : categoryFromInt(j['category'] as int),
+        modalityId: j['modalityId'] as String?,
+        modalityName: j['modalityName'] as String?,
         itemCount: (j['itemCount'] as int?) ?? 0,
       );
 }

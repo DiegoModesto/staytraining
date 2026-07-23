@@ -1,7 +1,9 @@
 @page "/admin/groups"
 @attribute [Authorize]
+@using Web.Blazor.Components.Shared
 @inject IAdminGatewayClient Client
 @inject IDialogService DialogService
+@inject NavigationManager Nav
 
 <PageTitle>Groups</PageTitle>
 
@@ -26,7 +28,8 @@
                   AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
                   DebounceInterval="300" OnDebounceIntervalElapsed="@(async () => await ReloadAsync())" Class="mb-3" />
 
-    <MudDataGrid T="GroupSummary" ServerData="@LoadGroups" @ref="_grid" RowsPerPage="20">
+    <MudDataGrid T="GroupSummary" ServerData="@LoadGroups" @ref="_grid" RowsPerPage="20"
+                 RowClick="OnRowClick" Hover="true">
         <Columns>
             <PropertyColumn Property="x => x.Name" Title="Name" />
             <PropertyColumn Property="x => x.Description" Title="Description" />
@@ -49,6 +52,15 @@
     private MudDataGrid<GroupSummary>? _grid;
     private string? _search;
     private string? _error;
+    private readonly DoubleClickDetector _dbl = new();
+
+    private void OnRowClick(DataGridRowClickEventArgs<GroupSummary> args)
+    {
+        if (args.Item is not null && _dbl.IsDoubleClick(args.Item))
+        {
+            Nav.NavigateTo($"/admin/groups/{args.Item.Id}");
+        }
+    }
 
     private async Task<GridData<GroupSummary>> LoadGroups(GridState<GroupSummary> state)
     {
