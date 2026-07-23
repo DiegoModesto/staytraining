@@ -1,3 +1,4 @@
+using Domain.Profiles;
 using SharedKernel;
 
 namespace Domain.Students;
@@ -18,6 +19,17 @@ public sealed class StudentProfile : Entity, IHasUpdatedAt
     public string FullName { get; set; } = string.Empty;
     public string? Email { get; set; }
     public DateOnly? BirthDate { get; set; }
+
+    // Personal data (the editable "ficha"). Required ones are enforced at the API/UI layer; kept
+    // nullable here so pre-existing rows remain valid until filled in.
+    public string? Phone { get; set; }
+    public string? EmergencyPhone { get; set; }
+    public BloodType BloodType { get; set; } = BloodType.Unknown;
+    public int? HeightCm { get; set; }
+    public decimal? WeightKg { get; set; }
+
+    /// <summary>MinIO object key of the profile photo (see IFileStorage); null when none.</summary>
+    public string? PhotoKey { get; set; }
 
     /// <summary>Training goals / general notes visible to the student.</summary>
     public string? Goals { get; set; }

@@ -6,6 +6,7 @@ using Domain.Execution;
 using Domain.Exercises;
 using Domain.Modalities;
 using Domain.MuscleGroups;
+using Domain.Profiles;
 using Domain.SampleEntities;
 using Domain.Students;
 using Domain.Workouts;
@@ -21,6 +22,7 @@ public class GetSampleEntityByIdQueryHandlerTests
         : DbContext(options), IApplicationDbContext
     {
         public DbSet<SampleEntity> SampleEntities => Set<SampleEntity>();
+        public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
         public DbSet<Modality> Modalities => Set<Modality>();
         public DbSet<MuscleGroup> MuscleGroups => Set<MuscleGroup>();
         public DbSet<Exercise> Exercises => Set<Exercise>();

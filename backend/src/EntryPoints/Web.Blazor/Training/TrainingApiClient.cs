@@ -20,6 +20,28 @@ internal sealed class TrainingApiClient(
 {
     private const string Base = "/api/v1";
 
+    public Task<ProfileDto?> GetMyProfileAsync(CancellationToken ct)
+        => GetOrNullAsync<ProfileDto>($"{Base}/profiles/me", ct);
+
+    public Task UpdateMyProfileAsync(UpdateProfileRequest request, CancellationToken ct)
+        => SendWithBodyAsync(HttpMethod.Put, $"{Base}/profiles/me", request, ct);
+
+    public async Task<UploadPhotoResponse> UploadMyProfilePhotoAsync(
+        byte[] bytes, string fileName, string contentType, CancellationToken ct)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(bytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(fileContent, "file", fileName);
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"{Base}/profiles/me/photo") { Content = content };
+        await AuthorizeAsync(req, ct);
+        using HttpResponseMessage resp = await httpClient.SendAsync(req, ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<UploadPhotoResponse>(ct)
+            ?? throw new InvalidOperationException("Empty response from photo upload.");
+    }
+
     public Task<IReadOnlyList<MuscleGroupDto>> ListMuscleGroupsAsync(CancellationToken ct)
         => GetListAsync<MuscleGroupDto>($"{Base}/muscle-groups", ct);
 

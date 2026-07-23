@@ -3,6 +3,7 @@ using Domain.Execution;
 using Domain.Exercises;
 using Domain.Modalities;
 using Domain.MuscleGroups;
+using Domain.Profiles;
 using Domain.SampleEntities;
 using Domain.Students;
 using Domain.Workouts;
@@ -14,6 +15,7 @@ public interface IApplicationDbContext
 {
     DbSet<SampleEntity> SampleEntities { get; }
 
+    DbSet<UserProfile> UserProfiles { get; }
     DbSet<Modality> Modalities { get; }
     DbSet<MuscleGroup> MuscleGroups { get; }
     DbSet<Exercise> Exercises { get; }

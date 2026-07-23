@@ -20,6 +20,12 @@ internal sealed class StudentProfileConfiguration : AbstractConfiguration<Studen
         builder.Property(e => e.Email).HasMaxLength(320);
         builder.Property(e => e.Goals).HasMaxLength(4000);
 
+        builder.Property(e => e.Phone).HasMaxLength(40);
+        builder.Property(e => e.EmergencyPhone).HasMaxLength(40);
+        builder.Property(e => e.BloodType).HasConversion<string>().HasMaxLength(20);
+        builder.Property(e => e.WeightKg).HasPrecision(5, 2);
+        builder.Property(e => e.PhotoKey).HasMaxLength(1024);
+
         builder.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
 
         builder.HasMany(e => e.HealthObservations)

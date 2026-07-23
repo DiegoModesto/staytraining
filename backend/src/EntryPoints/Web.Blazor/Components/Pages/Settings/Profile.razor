@@ -1,0 +1,194 @@
+@page "/settings/profile"
+@attribute [Authorize]
+@using Web.Blazor.Training
+@using Microsoft.AspNetCore.Components.Forms
+@inject ITrainingApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Meu perfil</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Meu perfil</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate />
+}
+else
+{
+    <MudPaper Class="pa-6" Elevation="0" Outlined Style="max-width:640px">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="4" Class="mb-4">
+            <MudAvatar Style="height:96px;width:96px;font-size:2rem">
+                @if (!string.IsNullOrEmpty(_photoUrl))
+                {
+                    <MudImage Src="@_photoUrl" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Person" Style="font-size:3rem" />
+                }
+            </MudAvatar>
+            <div>
+                <MudFileUpload T="IBrowserFile" Accept="image/*" FilesChanged="OnFileSelected" MaximumFileCount="1">
+                    <ActivatorContent>
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PhotoCamera"
+                                   Disabled="_uploadingPhoto">
+                            @(_uploadingPhoto ? "Enviando..." : "Alterar foto")
+                        </MudButton>
+                    </ActivatorContent>
+                </MudFileUpload>
+                <MudText Typo="Typo.caption" Class="mt-1" Style="color:var(--mud-palette-text-secondary)">
+                    Foto @Req() — recorte quadrado, otimizada para o app.
+                </MudText>
+            </div>
+        </MudStack>
+
+        <MudTextField @bind-Value="_fullName" Label="@($"Nome {Req()}")" Required Class="mb-3" MaxLength="200" />
+        <MudTextField @bind-Value="_email" Label="@($"E-mail {Req()}")" Required InputType="InputType.Email" Class="mb-3" MaxLength="320" />
+        <MudTextField @bind-Value="_phone" Label="@($"Telefone de contato {Req()}")" Required Class="mb-3" MaxLength="40" />
+
+        @if (_isStudent)
+        {
+            <MudTextField @bind-Value="_emergencyPhone" Label="@($"Telefone de emergência {Req()}")" Required Class="mb-3" MaxLength="40" />
+        }
+
+        <MudSelect T="BloodType" @bind-Value="_bloodType" Label="Tipo sanguíneo" Class="mb-3">
+            @foreach (var bt in BloodTypeDisplay.All)
+            {
+                <MudSelectItem T="BloodType" Value="bt">@BloodTypeDisplay.Label(bt)</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudStack Row>
+            <MudNumericField @bind-Value="_heightCm" Label="Altura (cm)" Min="30" Max="300" />
+            <MudNumericField @bind-Value="_weightKg" Label="Peso (kg)" Min="20" Max="400" Format="F1" />
+        </MudStack>
+
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="mt-4"
+                   StartIcon="@Icons.Material.Filled.Save" OnClick="Save" Disabled="_busy">Salvar</MudButton>
+    </MudPaper>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _busy;
+    private bool _uploadingPhoto;
+    private bool _isStudent;
+
+    private string _fullName = string.Empty;
+    private string _email = string.Empty;
+    private string? _phone;
+    private string? _emergencyPhone;
+    private BloodType _bloodType = BloodType.Unknown;
+    private int? _heightCm;
+    private decimal? _weightKg;
+    private string? _photoUrl;
+
+    private static string Req() => "*";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            ProfileDto? p = await Api.GetMyProfileAsync(CancellationToken.None);
+            if (p is not null)
+            {
+                _isStudent = p.IsStudent;
+                _fullName = p.FullName;
+                _email = p.Email;
+                _phone = p.Phone;
+                _emergencyPhone = p.EmergencyPhone;
+                _bloodType = p.BloodType;
+                _heightCm = p.HeightCm;
+                _weightKg = p.WeightKg;
+                _photoUrl = p.PhotoUrl;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar perfil: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnFileSelected(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        try
+        {
+            // Read the picked image (up to 8 MB) into a data URL for the cropper.
+            using var ms = new MemoryStream();
+            await file.OpenReadStream(8 * 1024 * 1024).CopyToAsync(ms);
+            string dataUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+
+            var parameters = new DialogParameters<Dialogs.PhotoCropDialog> { { x => x.ImageDataUrl, dataUrl } };
+            var options = new DialogOptions { CloseOnEscapeKey = true };
+            IDialogReference dlg = await DialogService.ShowAsync<Dialogs.PhotoCropDialog>("Recortar foto", parameters, options);
+            DialogResult? r = await dlg.Result;
+            if (r is null || r.Canceled || r.Data is not string croppedDataUrl || string.IsNullOrEmpty(croppedDataUrl))
+            {
+                return;
+            }
+
+            _uploadingPhoto = true;
+            StateHasChanged();
+
+            (byte[] bytes, string contentType, string ext) = DecodeDataUrl(croppedDataUrl);
+            UploadPhotoResponse resp = await Api.UploadMyProfilePhotoAsync(bytes, $"avatar{ext}", contentType, CancellationToken.None);
+            _photoUrl = resp.PhotoUrl;
+            Snackbar.Add("Foto atualizada.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao enviar foto: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _uploadingPhoto = false;
+        }
+    }
+
+    private static (byte[] Bytes, string ContentType, string Ext) DecodeDataUrl(string dataUrl)
+    {
+        int comma = dataUrl.IndexOf(',');
+        string meta = dataUrl[..comma];              // data:image/webp;base64
+        byte[] bytes = Convert.FromBase64String(dataUrl[(comma + 1)..]);
+        string contentType = meta.Contains("image/webp") ? "image/webp" : "image/png";
+        string ext = contentType == "image/webp" ? ".webp" : ".png";
+        return (bytes, contentType, ext);
+    }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_fullName) || string.IsNullOrWhiteSpace(_email)
+            || string.IsNullOrWhiteSpace(_phone) || (_isStudent && string.IsNullOrWhiteSpace(_emergencyPhone)))
+        {
+            Snackbar.Add("Preencha os campos obrigatórios (*).", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.UpdateMyProfileAsync(new UpdateProfileRequest(
+                _fullName.Trim(), _email.Trim(), _phone?.Trim(), _emergencyPhone?.Trim(),
+                _bloodType, _heightCm, _weightKg), CancellationToken.None);
+            Snackbar.Add("Perfil salvo.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao salvar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

@@ -1,0 +1,68 @@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2" Style="color:var(--mud-palette-text-secondary)">
+            Arraste para posicionar e use o zoom. A imagem é recortada em um quadrado.
+        </MudText>
+        <div id="@_hostId"
+             style="width:300px;height:300px;max-width:100%;border-radius:50%;background:var(--mud-palette-background-grey);margin:0 auto;box-shadow:0 0 0 9999px rgba(0,0,0,.06)"></div>
+        <div class="mt-4">
+            <MudText Typo="Typo.caption">Zoom</MudText>
+            <MudSlider T="double" Min="1" Max="3" Step="0.01" Value="_zoom" ValueChanged="OnZoom" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="_busy">Usar foto</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    /// <summary>The picked image as a data URL (data:image/...;base64,...).</summary>
+    [Parameter] public string ImageDataUrl { get; set; } = string.Empty;
+
+    private readonly string _hostId = $"st-crop-{Guid.NewGuid():N}";
+    private double _zoom = 1;
+    private bool _busy;
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_initialized)
+        {
+            _initialized = true;
+            await JS.InvokeVoidAsync("stCropper.init", _hostId, ImageDataUrl);
+        }
+    }
+
+    private async Task OnZoom(double value)
+    {
+        _zoom = value;
+        await JS.InvokeVoidAsync("stCropper.setZoom", _hostId, value);
+    }
+
+    private async Task Save()
+    {
+        _busy = true;
+        try
+        {
+            string? dataUrl = await JS.InvokeAsync<string?>("stCropper.export", _hostId);
+            Dialog.Close(DialogResult.Ok(dataUrl));
+        }
+        catch
+        {
+            _busy = false;
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("stCropper.destroy", _hostId); } catch { /* circuit may be gone */ }
+    }
+}

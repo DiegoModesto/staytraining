@@ -15,10 +15,12 @@
         <MudNavLink Href="/templates" Icon="@Icons.Material.Filled.ListAlt">Modelos</MudNavLink>
     </PermissionView>
 
-    <PermissionView Permission="modality.write">
-        <MudDivider Class="my-2" />
-        <MudText Class="px-4 py-2" Typo="Typo.overline">Configurações</MudText>
+    <MudDivider Class="my-2" />
+    <MudText Class="px-4 py-2" Typo="Typo.overline">Configurações</MudText>
 
+    <MudNavLink Href="/settings/profile" Icon="@Icons.Material.Filled.Person">Meu perfil</MudNavLink>
+
+    <PermissionView Permission="modality.write">
         <MudNavLink Href="/admin/modalities" Icon="@Icons.Material.Filled.Category">Modalidades</MudNavLink>
     </PermissionView>
 

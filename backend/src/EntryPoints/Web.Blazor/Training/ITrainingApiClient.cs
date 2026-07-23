@@ -3,6 +3,11 @@ namespace Web.Blazor.Training;
 /// <summary>Typed client for the StayTraining Web.API (reached through the gateway).</summary>
 public interface ITrainingApiClient
 {
+    // Current user's profile ("Meu perfil")
+    Task<ProfileDto?> GetMyProfileAsync(CancellationToken ct);
+    Task UpdateMyProfileAsync(UpdateProfileRequest request, CancellationToken ct);
+    Task<UploadPhotoResponse> UploadMyProfilePhotoAsync(byte[] bytes, string fileName, string contentType, CancellationToken ct);
+
     Task<IReadOnlyList<MuscleGroupDto>> ListMuscleGroupsAsync(CancellationToken ct);
     Task<Guid> CreateMuscleGroupAsync(CreateMuscleGroupRequest request, CancellationToken ct);
     Task UpdateMuscleGroupAsync(Guid id, UpdateMuscleGroupRequest request, CancellationToken ct);

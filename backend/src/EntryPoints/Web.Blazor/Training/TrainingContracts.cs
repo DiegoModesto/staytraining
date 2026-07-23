@@ -2,6 +2,31 @@ namespace Web.Blazor.Training;
 
 public enum HealthObservationKind { HealthIssue = 0, ProfessorNote = 1 }
 
+// Mirrors Domain.Profiles.BloodType (numeric JSON).
+public enum BloodType { Unknown = 0, APositive, ANegative, BPositive, BNegative, AbPositive, AbNegative, OPositive, ONegative }
+
+public sealed record ProfileDto(
+    bool IsStudent,
+    string FullName,
+    string Email,
+    string? Phone,
+    string? EmergencyPhone,
+    BloodType BloodType,
+    int? HeightCm,
+    decimal? WeightKg,
+    string? PhotoUrl);
+
+public sealed record UpdateProfileRequest(
+    string FullName,
+    string Email,
+    string? Phone,
+    string? EmergencyPhone,
+    BloodType BloodType,
+    int? HeightCm,
+    decimal? WeightKg);
+
+public sealed record UploadPhotoResponse(string Key, string PhotoUrl);
+
 public sealed record MuscleGroupDto(Guid Id, string Name, string BodyRegion);
 
 public sealed record CreateMuscleGroupRequest(string Name, string BodyRegion);
