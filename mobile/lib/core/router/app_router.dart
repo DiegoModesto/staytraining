@@ -11,6 +11,7 @@ import '../../features/reports/weekly_report_screen.dart';
 import '../../features/workouts/workout_builder_screen.dart';
 import '../../features/workouts/workout_detail_screen.dart';
 import '../../features/workouts/workouts_screen.dart';
+import '../ui/main_shell.dart';
 import '../di/providers.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -27,25 +28,59 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      // Full-screen routes (no bottom nav / rail): login and the immersive workout session.
       GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
-      GoRoute(path: '/', builder: (c, s) => const HomeScreen()),
-      GoRoute(path: '/workouts', builder: (c, s) => const WorkoutsScreen()),
-      GoRoute(path: '/workouts/new', builder: (c, s) => const WorkoutBuilderScreen()),
-      GoRoute(
-        path: '/workouts/:id',
-        builder: (c, s) => WorkoutDetailScreen(workoutId: s.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/exercises/:id',
-        builder: (c, s) => ExerciseDetailScreen(exerciseId: s.pathParameters['id']!),
-      ),
       GoRoute(
         path: '/session/:workoutId',
         builder: (c, s) => SessionScreen(workoutId: s.pathParameters['workoutId']!),
       ),
-      GoRoute(path: '/notes', builder: (c, s) => const NotesScreen()),
-      GoRoute(path: '/reports', builder: (c, s) => const WeeklyReportScreen()),
-      GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
+
+      // Main app: responsive shell with one branch (stack) per tab.
+      StatefulShellRoute.indexedStack(
+        builder: (c, s, navigationShell) => MainShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/', builder: (c, s) => const HomeScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/workouts',
+                builder: (c, s) => const WorkoutsScreen(),
+                routes: [
+                  // 'new' before ':id' so it isn't captured as an id.
+                  GoRoute(path: 'new', builder: (c, s) => const WorkoutBuilderScreen()),
+                  GoRoute(
+                    path: ':id',
+                    builder: (c, s) => WorkoutDetailScreen(workoutId: s.pathParameters['id']!),
+                  ),
+                ],
+              ),
+              GoRoute(
+                path: '/exercises/:id',
+                builder: (c, s) => ExerciseDetailScreen(exerciseId: s.pathParameters['id']!),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/notes', builder: (c, s) => const NotesScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/reports', builder: (c, s) => const WeeklyReportScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
+            ],
+          ),
+        ],
+      ),
     ],
   );
 });
