@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/di/providers.dart';
+import '../../core/ui/responsive.dart';
 import '../../core/util/dates.dart';
 import '../../models/models.dart';
 
@@ -94,11 +95,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: const Text('StayTraining'),
         actions: [
           IconButton(
-            tooltip: 'Meu perfil',
-            icon: const Icon(Icons.account_circle),
-            onPressed: () => context.go('/profile'),
-          ),
-          IconButton(
             tooltip: 'Sincronizar',
             icon: const Icon(Icons.sync),
             onPressed: () async {
@@ -113,44 +109,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final wide = constraints.maxWidth >= 720;
-          final content = _WeekAndNav(weekFuture: _week, wide: wide, onRefresh: _reload);
-          return content;
-        },
-      ),
-    );
-  }
-}
-
-class _WeekAndNav extends StatelessWidget {
-  const _WeekAndNav({required this.weekFuture, required this.wide, required this.onRefresh});
-  final Future<List<WeekScheduleItem>> weekFuture;
-  final bool wide;
-  final VoidCallback onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    final nav = _NavCards(wide: wide);
-    final week = _WeekList(future: weekFuture);
-
-    if (wide) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: RefreshIndicator(
+        onRefresh: () async => _reload(),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            Expanded(flex: 3, child: week),
-            const SizedBox(width: 16),
-            SizedBox(width: 320, child: nav),
+            AdaptiveContainer(child: _WeekList(future: _week)),
           ],
         ),
-      );
-    }
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [week, const SizedBox(height: 16), nav],
+      ),
     );
   }
 }
@@ -201,27 +168,3 @@ class _WeekList extends StatelessWidget {
   }
 }
 
-class _NavCards extends StatelessWidget {
-  const _NavCards({required this.wide});
-  final bool wide;
-
-  @override
-  Widget build(BuildContext context) {
-    final tiles = [
-      _tile(context, Icons.fitness_center, 'Meus treinos', '/workouts'),
-      _tile(context, Icons.notes, 'Anotações', '/notes'),
-      _tile(context, Icons.insights, 'Relatório semanal', '/reports'),
-      _tile(context, Icons.account_circle, 'Meu perfil', '/profile'),
-    ];
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: tiles);
-  }
-
-  Widget _tile(BuildContext context, IconData icon, String label, String route) => Card(
-        child: ListTile(
-          leading: Icon(icon),
-          title: Text(label),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.go(route),
-        ),
-      );
-}
