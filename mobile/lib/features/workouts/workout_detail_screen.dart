@@ -26,20 +26,22 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isStudent = ref.watch(myProfileProvider).asData?.value.isStudent ?? false;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Treino'),
         actions: [
-          IconButton(
-            tooltip: 'Perguntar ao professor',
-            icon: const Icon(Icons.help_outline),
-            onPressed: () => showAskQuestionDialog(
-              context,
-              ref,
-              workoutId: widget.workoutId,
-              targetLabel: 'Sobre este treino',
+          if (isStudent)
+            IconButton(
+              tooltip: 'Perguntar ao professor',
+              icon: const Icon(Icons.help_outline),
+              onPressed: () => showAskQuestionDialog(
+                context,
+                ref,
+                workoutId: widget.workoutId,
+                targetLabel: 'Sobre este treino',
+              ),
             ),
-          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

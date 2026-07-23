@@ -18,7 +18,9 @@ public sealed class CreateWorkoutCommandHandler(
         Guid tenantId = userContext.TenantId
             ?? throw new InvalidOperationException("TenantId is required to create a Workout.");
 
-        Guid ownerStudentId = command.OwnerStudentId == Guid.Empty
+        // Self-service: a plain student may only create workouts for themselves. Only a manager
+        // (professor with student.manage) can assign a workout to another student.
+        Guid ownerStudentId = command.OwnerStudentId == Guid.Empty || !userContext.HasPermission("student.manage")
             ? userContext.UserId
             : command.OwnerStudentId;
 

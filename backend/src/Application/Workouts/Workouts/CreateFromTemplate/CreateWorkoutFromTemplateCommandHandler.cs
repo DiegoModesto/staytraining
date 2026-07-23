@@ -30,7 +30,8 @@ public sealed class CreateWorkoutFromTemplateCommandHandler(
             return Result.Failure<Guid>(WorkoutTemplateErrors.NotFound(command.TemplateId));
         }
 
-        Guid ownerStudentId = command.OwnerStudentId == Guid.Empty
+        // Self-service: only a manager (professor) may target another student.
+        Guid ownerStudentId = command.OwnerStudentId == Guid.Empty || !userContext.HasPermission("student.manage")
             ? userContext.UserId
             : command.OwnerStudentId;
 

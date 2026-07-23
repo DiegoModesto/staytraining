@@ -25,7 +25,8 @@ public sealed class RemoveWorkoutItemCommandHandler(
                     && (tenantId == null || w.TenantId == tenantId),
                 cancellationToken);
 
-        if (workout is null)
+        if (workout is null
+            || (!userContext.HasPermission("student.manage") && workout.OwnerStudentId != userContext.UserId))
         {
             return Result.Failure(WorkoutErrors.NotFound(command.WorkoutId));
         }

@@ -76,8 +76,8 @@ public static class PermissionCodes
     /// <summary>Permissions granted to the Aluno (student) role.</summary>
     public static IReadOnlyCollection<string> StudentRole { get; } =
     [
-        ModalityRead, HealthCatalogRead, ExerciseRead, TemplateRead, WorkoutRead, SessionWrite, NoteWrite, ReportRead,
-        QuestionAsk,
+        ModalityRead, HealthCatalogRead, ExerciseRead, TemplateRead, WorkoutRead, WorkoutWrite,
+        SessionWrite, NoteWrite, ReportRead, QuestionAsk,
     ];
 
     /// <summary>Permissions granted to the Professor (teacher) role — superset of the student's.</summary>

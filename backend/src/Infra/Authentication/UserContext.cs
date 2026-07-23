@@ -56,4 +56,11 @@ internal sealed class UserContext(IHttpContextAccessor httpContextAccessor) : IU
                 ?? user?.FindFirstValue("preferred_username");
         }
     }
+
+    public bool HasPermission(string permission)
+    {
+        ClaimsPrincipal? user = httpContextAccessor.HttpContext?.User;
+        return user is not null
+            && user.Claims.Any(c => c.Type == "permission" && c.Value == permission);
+    }
 }

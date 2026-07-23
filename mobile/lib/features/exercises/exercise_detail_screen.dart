@@ -27,18 +27,22 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Only students ask questions (the app also serves professors in a read-only "student view").
+    final isStudent = ref.watch(myProfileProvider).asData?.value.isStudent ?? false;
     return Scaffold(
       appBar: AppBar(title: const Text('Exercício')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showAskQuestionDialog(
-          context,
-          ref,
-          exerciseId: widget.exerciseId,
-          targetLabel: 'Sobre este exercício',
-        ),
-        icon: const Icon(Icons.help_outline),
-        label: const Text('Perguntar'),
-      ),
+      floatingActionButton: isStudent
+          ? FloatingActionButton.extended(
+              onPressed: () => showAskQuestionDialog(
+                context,
+                ref,
+                exerciseId: widget.exerciseId,
+                targetLabel: 'Sobre este exercício',
+              ),
+              icon: const Icon(Icons.help_outline),
+              label: const Text('Perguntar'),
+            )
+          : null,
       body: FutureBuilder<Exercise>(
         future: _future,
         builder: (context, snap) {
