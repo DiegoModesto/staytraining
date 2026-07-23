@@ -1,4 +1,5 @@
 using Application.Students.AddStudentNote;
+using Application.Students.Apportments;
 using Application.Students.Ficha;
 using Application.Students.GetById;
 using Application.Students.List;
@@ -105,6 +106,85 @@ public class StudentTests
             CancellationToken.None);
         missing.IsFailure.ShouldBeTrue();
         missing.Error.Code.ShouldBe("Student.NotFound");
+    }
+
+    [Fact]
+    public async Task AddMyApportment_adds_to_own_ficha_and_validates_catalog_pair()
+    {
+        var tenant = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await using var db = TestHarness.NewContext();
+        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), TenantId = tenant, UserId = userId, FullName = "Rita" });
+        var bodyPartId = Guid.NewGuid();
+        var problemTypeId = Guid.NewGuid();
+        db.BodyParts.Add(new BodyPart { Id = bodyPartId, Name = "Lombar", SortOrder = 0, CreatedAt = DateTimeOffset.UtcNow });
+        db.ProblemTypes.Add(new ProblemType { Id = problemTypeId, BodyPartId = bodyPartId, Name = "Hérnia", SortOrder = 0, CreatedAt = DateTimeOffset.UtcNow });
+        await db.SaveChangesAsync();
+
+        var handler = new AddMyApportmentCommandHandler(db, TestHarness.User(tenant, userId));
+
+        var ok = await handler.Handle(new AddMyApportmentCommand(bodyPartId, problemTypeId, "sem cirurgia"), CancellationToken.None);
+        ok.IsSuccess.ShouldBeTrue();
+        db.HealthApportments.Single().BodyPartName.ShouldBe("Lombar");
+        db.StudentEditLogs.Count().ShouldBe(0); // self edit is NOT logged
+
+        // Problem type not belonging to the chosen body part is rejected.
+        var bad = await handler.Handle(new AddMyApportmentCommand(bodyPartId, Guid.NewGuid(), null), CancellationToken.None);
+        bad.Error.Code.ShouldBe("ProblemType.NotFound");
+    }
+
+    [Fact]
+    public async Task RemoveMyApportment_only_removes_from_callers_own_ficha()
+    {
+        var tenant = Guid.NewGuid();
+        var owner = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        var apportId = Guid.NewGuid();
+        await using var db = TestHarness.NewContext();
+        db.StudentProfiles.Add(new StudentProfile
+        {
+            Id = profileId, TenantId = tenant, UserId = owner, FullName = "Rita",
+            HealthApportments =
+            [
+                new HealthApportment
+                {
+                    Id = apportId, StudentProfileId = profileId,
+                    BodyPartId = Guid.NewGuid(), BodyPartName = "Ombro",
+                    ProblemTypeId = Guid.NewGuid(), ProblemTypeName = "Deslocamento",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                },
+            ],
+        });
+        await db.SaveChangesAsync();
+
+        // A different user cannot remove it.
+        var other = new RemoveMyApportmentCommandHandler(db, TestHarness.User(tenant, Guid.NewGuid()));
+        (await other.Handle(new RemoveMyApportmentCommand(apportId), CancellationToken.None)).IsFailure.ShouldBeTrue();
+        db.HealthApportments.Count().ShouldBe(1);
+
+        // The owner can.
+        var self = new RemoveMyApportmentCommandHandler(db, TestHarness.User(tenant, owner));
+        (await self.Handle(new RemoveMyApportmentCommand(apportId), CancellationToken.None)).IsSuccess.ShouldBeTrue();
+        db.HealthApportments.Count().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AdminUpdateFicha_updates_fields_and_writes_edit_log()
+    {
+        var tenant = Guid.NewGuid();
+        var studentId = Guid.NewGuid();
+        await using var db = TestHarness.NewContext();
+        db.StudentProfiles.Add(new StudentProfile { Id = studentId, TenantId = tenant, UserId = Guid.NewGuid(), FullName = "Rita" });
+        await db.SaveChangesAsync();
+
+        var handler = new UpdateStudentFichaCommandHandler(db, TestHarness.User(tenant, Guid.NewGuid(), "Diego Modesto"));
+        var result = await handler.Handle(
+            new UpdateStudentFichaCommand(studentId, "Rita S.", "r@x.com", "1", "2", Domain.Profiles.BloodType.OPositive, 165, 60m, "objetivo"),
+            CancellationToken.None);
+
+        result.IsSuccess.ShouldBeTrue();
+        db.StudentProfiles.Single().FullName.ShouldBe("Rita S.");
+        db.StudentEditLogs.Single().Action.ShouldBe("FichaUpdated"); // admin edit audited
     }
 
     [Fact]
