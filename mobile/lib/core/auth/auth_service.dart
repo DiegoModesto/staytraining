@@ -41,6 +41,31 @@ class AuthService {
     return true;
   }
 
+  /// Exchanges the stored refresh token for a new access token (silent refresh).
+  /// Returns false when there is no refresh token (e.g. dev manual token) or the exchange fails.
+  Future<bool> refresh() async {
+    final refreshToken = await _storage.read(key: _refreshTokenKey);
+    if (refreshToken == null || refreshToken.isEmpty) return false;
+    try {
+      final result = await _appAuth.token(
+        TokenRequest(
+          AppConfig.authClientId,
+          AppConfig.authRedirectUri,
+          issuer: AppConfig.authIssuer,
+          refreshToken: refreshToken,
+          scopes: AppConfig.authScopes,
+          grantType: 'refresh_token',
+        ),
+      );
+      final token = result.accessToken;
+      if (token == null) return false;
+      await _persist(token, result.refreshToken ?? refreshToken);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Dev/testing fallback: store a bearer token obtained out-of-band.
   Future<void> setManualToken(String token) => _persist(token, null);
 

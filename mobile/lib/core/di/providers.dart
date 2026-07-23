@@ -15,7 +15,11 @@ final authControllerProvider = ChangeNotifierProvider<AuthController>(
   (ref) => AuthController(ref.read(authServiceProvider)),
 );
 
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient(ref.read(authServiceProvider)));
+final apiClientProvider = Provider<ApiClient>((ref) => ApiClient(
+      ref.read(authServiceProvider),
+      cache: ref.read(localStoreProvider),
+      onAuthFailure: () => ref.read(authControllerProvider).logout(),
+    ));
 
 final trainingApiProvider = Provider<TrainingApi>((ref) => TrainingApi(ref.read(apiClientProvider)));
 

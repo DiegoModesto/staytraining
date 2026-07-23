@@ -44,6 +44,18 @@ class LocalStore {
     return raw == null ? null : jsonDecode(raw) as T;
   }
 
+  // ----- HTTP response cache (offline-first reads) -----
+  // Stores the raw JSON body of successful GETs, keyed by request URI, so screens fall back to the
+  // last-known data when the device is offline. Values may be a List or a Map.
+
+  Future<void> cacheHttpResponse(String uriKey, Object? data) =>
+      setString('http:$uriKey', jsonEncode(data));
+
+  Future<Object?> readHttpResponse(String uriKey) async {
+    final raw = await getString('http:$uriKey');
+    return raw == null ? null : jsonDecode(raw);
+  }
+
   // ----- Offline session queue -----
 
   Future<void> enqueueSession(Map<String, dynamic> session) async {
