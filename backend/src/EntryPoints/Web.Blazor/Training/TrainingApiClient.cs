@@ -231,6 +231,12 @@ internal sealed class TrainingApiClient(
         return GetOrNullAsync<WeeklyReportDto>(path, ct);
     }
 
+    public Task<IReadOnlyList<QuestionDto>> ListQuestionsAsync(bool onlyOpen, CancellationToken ct)
+        => GetListAsync<QuestionDto>($"{Base}/questions?onlyOpen={onlyOpen.ToString().ToLowerInvariant()}", ct);
+
+    public Task AnswerQuestionAsync(Guid id, AnswerQuestionRequest request, CancellationToken ct)
+        => SendWithBodyAsync(HttpMethod.Post, $"{Base}/questions/{id}/answer", request, ct);
+
     private sealed record StartSessionBody(Guid WorkoutId);
 
     // ----- helpers (token-forwarding) -----

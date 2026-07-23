@@ -1,0 +1,101 @@
+@page "/questions"
+@attribute [Authorize]
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Perguntas</PageTitle>
+
+<PermissionView Permission="question.answer">
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h4">Perguntas</MudText>
+        @if (_openCount > 0)
+        {
+            <MudBadge Content="_openCount" Color="Color.Error" Overlap="false" />
+        }
+        <MudSpacer />
+        <MudSwitch @bind-Value="_onlyOpen" Label="Só abertas" Color="Color.Primary" @bind-Value:after="LoadAsync" />
+    </MudStack>
+
+    <MudTable Items="_questions" Hover Loading="_loading" Dense Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Aluno</MudTh>
+            <MudTh>Sobre</MudTh>
+            <MudTh>Pergunta</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Aluno">@context.StudentName</MudTd>
+            <MudTd DataLabel="Sobre">@About(context)</MudTd>
+            <MudTd DataLabel="Pergunta">
+                <MudText>@context.Text</MudText>
+                @if (context.IsAnswered)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Success" Class="mt-1">
+                        <b>@(context.AnsweredByName ?? "Professor"):</b> @context.AnswerText
+                    </MudText>
+                }
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(context.IsAnswered ? Color.Success : Color.Warning)">
+                    @(context.IsAnswered ? "Respondida" : "Aguardando")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Reply" OnClick="() => Answer(context)">
+                    @(context.IsAnswered ? "Editar" : "Responder")
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>@(_onlyOpen ? "Nenhuma pergunta em aberto." : "Nenhuma pergunta.")</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</PermissionView>
+
+@code {
+    private IReadOnlyList<QuestionDto> _questions = [];
+    private bool _loading = true;
+    private bool _onlyOpen = true;
+    private int _openCount;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _questions = await Api.ListQuestionsAsync(_onlyOpen, CancellationToken.None);
+            _openCount = _questions.Count(q => !q.IsAnswered);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar perguntas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string About(QuestionDto q) =>
+        q.WorkoutName is not null ? $"Treino: {q.WorkoutName}"
+        : q.ExerciseName is not null ? $"Exercício: {q.ExerciseName}"
+        : "Geral";
+
+    private async Task Answer(QuestionDto question)
+    {
+        var parameters = new DialogParameters<Dialogs.AnswerQuestionDialog>
+        {
+            { x => x.Question, question },
+        };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AnswerQuestionDialog>("Responder", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await LoadAsync();
+    }
+}

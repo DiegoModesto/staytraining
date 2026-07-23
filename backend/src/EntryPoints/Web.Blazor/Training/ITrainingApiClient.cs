@@ -74,4 +74,8 @@ public interface ITrainingApiClient
     Task<IReadOnlyList<WeekScheduleItemDto>> GetWeekScheduleAsync(DateOnly weekStart, Guid? studentId, CancellationToken ct);
     Task<Guid> ScheduleWorkoutAsync(ScheduleWorkoutRequest request, CancellationToken ct);
     Task<WeeklyReportDto?> GetWeeklyReportAsync(DateOnly weekStart, Guid? studentId, CancellationToken ct);
+
+    // Questions (professor answers students' questions)
+    Task<IReadOnlyList<QuestionDto>> ListQuestionsAsync(bool onlyOpen, CancellationToken ct);
+    Task AnswerQuestionAsync(Guid id, AnswerQuestionRequest request, CancellationToken ct);
 }

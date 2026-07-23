@@ -251,3 +251,20 @@ public sealed record WeeklyReportDto(
     int DistinctWorkoutCount,
     IReadOnlyList<WeeklyReportSessionDto> Sessions,
     IReadOnlyList<WeeklyReportExerciseDto> Exercises);
+
+public sealed record QuestionDto(
+    Guid Id,
+    Guid StudentId,
+    string StudentName,
+    Guid? WorkoutId,
+    string? WorkoutName,
+    Guid? ExerciseId,
+    string? ExerciseName,
+    string Text,
+    DateTimeOffset CreatedAt,
+    string? AnswerText,
+    string? AnsweredByName,
+    DateTimeOffset? AnsweredAt,
+    bool IsAnswered);
+
+public sealed record AnswerQuestionRequest(string Answer);
