@@ -1,5 +1,4 @@
 @page "/students/{StudentId:guid}"
-@rendermode InteractiveServer
 @attribute [Authorize]
 @using Web.Blazor.Training
 @inject ITrainingApiClient Api
@@ -93,7 +92,57 @@
                                 {
                                     <MudListItem T="WorkoutListItemDto" Icon="@Icons.Material.Filled.FitnessCenter"
                                                  OnClick="() => OpenWorkout(w.Id)">
-                                        @w.Name <MudChip T="string" Size="Size.Small">@w.ItemCount ex.</MudChip>
+                                        <MudStack Row AlignItems="AlignItems.Center">
+                                            <span>@w.Name</span>
+                                            <MudChip T="string" Size="Size.Small">@w.ItemCount ex.</MudChip>
+                                            <MudSpacer />
+                                            <PermissionView Permission="workout.write">
+                                                <div @onclick:stopPropagation="true">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                                   Color="Color.Error"
+                                                                   OnClick="@(() => DeleteWorkout(w.Id, w.Name))" />
+                                                </div>
+                                            </PermissionView>
+                                        </MudStack>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Anotações</MudText>
+                            <MudText Typo="Typo.caption">Visíveis a todos os professores — nunca ao aluno.</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            @* Gated by student.read (professor-only) so the button is always visible to
+                               professors; the API still enforces studentnote.write on the POST. *@
+                            <PermissionView Permission="student.read">
+                                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.EditNote"
+                                           Color="Color.Primary" OnClick="OpenAddNote">Nova anotação</MudButton>
+                            </PermissionView>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_notes.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2">Sem anotações.</MudText>
+                        }
+                        else
+                        {
+                            <MudList T="StudentNoteDto" Dense>
+                                @foreach (var n in _notes)
+                                {
+                                    <MudListItem T="StudentNoteDto" Icon="@Icons.Material.Filled.StickyNote2">
+                                        <MudText Typo="Typo.body1">@n.Content</MudText>
+                                        <MudText Typo="Typo.caption">
+                                            @n.AuthorName · @n.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        </MudText>
                                     </MudListItem>
                                 }
                             </MudList>
@@ -110,6 +159,7 @@
 
     private StudentDetailDto? _student;
     private IReadOnlyList<WorkoutListItemDto> _workouts = [];
+    private IReadOnlyList<StudentNoteDto> _notes = [];
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -123,6 +173,7 @@
             if (_student is not null)
             {
                 _workouts = await Api.ListWorkoutsAsync(_student.UserId, CancellationToken.None);
+                _notes = await Api.ListStudentNotesAsync(StudentId, CancellationToken.None);
             }
         }
         catch (Exception ex)
@@ -146,7 +197,19 @@
         if (r is not null && !r.Canceled) await LoadAsync();
     }
 
-    private void OpenWorkout(Guid workoutId) => Nav.NavigateTo($"/workouts/{workoutId}");
+    private async Task OpenAddNote()
+    {
+        var parameters = new DialogParameters<Dialogs.AddStudentNoteDialog>
+        {
+            { x => x.StudentProfileId, StudentId },
+        };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AddStudentNoteDialog>("Nova anotação", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await LoadAsync();
+    }
+
+    private void OpenWorkout(Guid workoutId) =>
+        Nav.NavigateTo($"/workouts/{workoutId}?from={Uri.EscapeDataString($"/students/{StudentId}")}");
 
     private async Task OpenCreateWorkout()
     {
@@ -159,7 +222,7 @@
         DialogResult? r = await dlg.Result;
         if (r is not null && !r.Canceled && r.Data is Guid id)
         {
-            Nav.NavigateTo($"/workouts/{id}");
+            Nav.NavigateTo($"/workouts/{id}?from={Uri.EscapeDataString($"/students/{StudentId}")}");
         }
     }
 
@@ -173,5 +236,25 @@
         IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AssignTemplateDialog>("Atribuir treino de modelo", parameters);
         DialogResult? r = await dlg.Result;
         if (r is not null && !r.Canceled) await LoadAsync();
+    }
+
+    private async Task DeleteWorkout(Guid workoutId, string name)
+    {
+        bool? confirmed = await DialogService.ShowMessageBox(
+            "Excluir treino",
+            $"Excluir o treino \"{name}\"? Esta ação não pode ser desfeita.",
+            yesText: "Excluir", cancelText: "Cancelar");
+        if (confirmed != true) return;
+
+        try
+        {
+            await Api.DeleteWorkoutAsync(workoutId, CancellationToken.None);
+            Snackbar.Add("Treino excluído.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao excluir treino: {ex.Message}", Severity.Error);
+        }
     }
 }

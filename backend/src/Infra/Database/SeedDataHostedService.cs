@@ -85,6 +85,15 @@ internal sealed class SeedDataHostedService(
                 Detail = "Evitar carga máxima em desenvolvimento; progressão gradual.",
                 CreatedAt = DateTimeOffset.UtcNow,
             });
+            rita.Notes.Add(new StudentNote
+            {
+                Id = Guid.NewGuid(),
+                StudentProfileId = rita.Id,
+                AuthorUserId = AdminUserId,
+                AuthorName = "Diego Modesto",
+                Content = "Aluna dedicada e assídua. Boa evolução na técnica de agachamento.",
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
             db.StudentProfiles.Add(rita);
             await db.SaveChangesAsync(ct);
         }

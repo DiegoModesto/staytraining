@@ -43,9 +43,16 @@ public sealed record RegisterStudentRequest(
 
 public sealed record AddHealthObservationRequest(HealthObservationKind Kind, string Title, string? Detail);
 
+public sealed record StudentNoteDto(
+    Guid Id, Guid AuthorUserId, string AuthorName, string Content, DateTimeOffset CreatedAt);
+
+public sealed record AddStudentNoteRequest(string Content);
+
 public sealed record WorkoutListItemDto(Guid Id, string Name, ExerciseCategory? Category, int ItemCount);
 
 public sealed record CreateWorkoutFromTemplateRequest(Guid TemplateId, Guid OwnerStudentId, string? NameOverride);
+
+public sealed record RenameWorkoutRequest(string Name);
 
 public sealed record IdResponse(Guid Id);
 

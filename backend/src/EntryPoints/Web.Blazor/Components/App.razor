@@ -14,13 +14,14 @@
     <link rel="stylesheet" href="@Assets["staytraining.css"]" />
     <ImportMap />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <HeadOutlet />
+    <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
 <body>
-    <Routes />
+    <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="reorder-flip.js"></script>
 </body>
 
 </html>

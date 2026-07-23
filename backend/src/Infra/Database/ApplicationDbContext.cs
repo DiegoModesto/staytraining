@@ -33,6 +33,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<StudentProfile> StudentProfiles { get; set; }
     public DbSet<HealthObservation> HealthObservations { get; set; }
+    public DbSet<StudentNote> StudentNotes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

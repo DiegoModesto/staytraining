@@ -23,4 +23,7 @@ public sealed class StudentProfile : Entity, IHasUpdatedAt
     public string? Goals { get; set; }
 
     public List<HealthObservation> HealthObservations { get; set; } = [];
+
+    /// <summary>Professor annotations on the student's sheet — visible to professors only, never to the student.</summary>
+    public List<StudentNote> Notes { get; set; } = [];
 }

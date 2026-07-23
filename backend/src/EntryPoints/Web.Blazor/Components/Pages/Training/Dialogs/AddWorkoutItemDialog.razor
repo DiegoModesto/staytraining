@@ -4,8 +4,9 @@
 
 <MudDialog>
     <DialogContent>
-        <MudSelect T="Guid" @bind-Value="_exerciseId" Label="Exercício" Required Class="mb-3"
-                   AnchorOrigin="Origin.BottomCenter">
+        <MudSelect T="Guid" @bind-Value="_exerciseId" Label="Exercício" Placeholder="Selecione um exercício"
+                   Required Class="mb-3" AnchorOrigin="Origin.BottomCenter"
+                   ToStringFunc="@(id => _exercises.FirstOrDefault(e => e.Id == id)?.Name ?? string.Empty)">
             @foreach (var e in _exercises)
             {
                 <MudSelectItem T="Guid" Value="e.Id">@e.Name (@Label(e.Category))</MudSelectItem>

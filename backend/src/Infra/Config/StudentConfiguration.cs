@@ -26,6 +26,29 @@ internal sealed class StudentProfileConfiguration : AbstractConfiguration<Studen
             .WithOne()
             .HasForeignKey(o => o.StudentProfileId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(e => e.Notes)
+            .WithOne()
+            .HasForeignKey(n => n.StudentProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class StudentNoteConfiguration : IEntityTypeConfiguration<StudentNote>
+{
+    public void Configure(EntityTypeBuilder<StudentNote> builder)
+    {
+        builder.ToTable("student_notes");
+
+        builder.HasKey(n => n.Id);
+
+        builder.Property(n => n.StudentProfileId).IsRequired();
+        builder.Property(n => n.AuthorUserId).IsRequired();
+        builder.Property(n => n.AuthorName).IsRequired().HasMaxLength(200);
+        builder.Property(n => n.Content).IsRequired().HasMaxLength(4000);
+        builder.Property(n => n.CreatedAt).IsRequired();
+
+        builder.HasIndex(n => n.StudentProfileId);
     }
 }
 

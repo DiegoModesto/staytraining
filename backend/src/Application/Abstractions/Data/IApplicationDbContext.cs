@@ -30,6 +30,7 @@ public interface IApplicationDbContext
 
     DbSet<StudentProfile> StudentProfiles { get; }
     DbSet<HealthObservation> HealthObservations { get; }
+    DbSet<StudentNote> StudentNotes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

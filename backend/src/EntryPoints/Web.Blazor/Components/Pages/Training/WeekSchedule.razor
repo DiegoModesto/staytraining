@@ -1,5 +1,4 @@
 @page "/students/{StudentId:guid}/schedule"
-@rendermode InteractiveServer
 @attribute [Authorize]
 @using Web.Blazor.Training
 @inject ITrainingApiClient Api
@@ -56,7 +55,7 @@
                             {
                                 <MudButton FullWidth Class="mb-1 justify-start" Variant="Variant.Outlined"
                                            StartIcon="@Icons.Material.Filled.FitnessCenter"
-                                           OnClick="@(() => Nav.NavigateTo($"/workouts/{it.WorkoutId}"))">
+                                           OnClick="@(() => Nav.NavigateTo($"/workouts/{it.WorkoutId}?from={Uri.EscapeDataString($"/students/{StudentId}/schedule")}"))">
                                     @it.WorkoutName
                                 </MudButton>
                             }

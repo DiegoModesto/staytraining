@@ -60,6 +60,12 @@ internal sealed class TrainingApiClient(
     public async Task<Guid> AddHealthObservationAsync(Guid studentId, AddHealthObservationRequest request, CancellationToken ct)
         => (await PostAsync<AddHealthObservationRequest, IdResponse>($"{Base}/students/{studentId}/health", request, ct)).Id;
 
+    public Task<IReadOnlyList<StudentNoteDto>> ListStudentNotesAsync(Guid studentId, CancellationToken ct)
+        => GetListAsync<StudentNoteDto>($"{Base}/students/{studentId}/notes", ct);
+
+    public async Task<Guid> AddStudentNoteAsync(Guid studentId, AddStudentNoteRequest request, CancellationToken ct)
+        => (await PostAsync<AddStudentNoteRequest, IdResponse>($"{Base}/students/{studentId}/notes", request, ct)).Id;
+
     public Task<IReadOnlyList<WorkoutListItemDto>> ListWorkoutsAsync(Guid? ownerStudentId, CancellationToken ct)
     {
         string path = $"{Base}/workouts";
@@ -73,6 +79,12 @@ internal sealed class TrainingApiClient(
 
     public async Task<Guid> CreateWorkoutFromTemplateAsync(CreateWorkoutFromTemplateRequest request, CancellationToken ct)
         => (await PostAsync<CreateWorkoutFromTemplateRequest, IdResponse>($"{Base}/workouts/from-template", request, ct)).Id;
+
+    public Task DeleteWorkoutAsync(Guid workoutId, CancellationToken ct)
+        => SendNoBodyAsync(HttpMethod.Delete, $"{Base}/workouts/{workoutId}", ct);
+
+    public Task RenameWorkoutAsync(Guid workoutId, string name, CancellationToken ct)
+        => SendWithBodyAsync(HttpMethod.Put, $"{Base}/workouts/{workoutId}/name", new RenameWorkoutRequest(name), ct);
 
     // ----- workout building -----
 

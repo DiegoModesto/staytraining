@@ -1,3 +1,5 @@
+@inject NavigationManager Nav
+
 <MudThemeProvider Theme="StayTrainingTheme.Instance" IsDarkMode="true" />
 <MudPopoverProvider />
 <MudDialogProvider />
@@ -10,7 +12,8 @@
                 <MudContainer Class="mt-8">
                     <MudAlert Severity="Severity.Warning">
                         You are not authorized to view this page.
-                        <MudLink Href="/login">Sign in</MudLink>
+                        <MudLink @onclick="@(() => Nav.NavigateTo("/login", forceLoad: true))"
+                                 Style="cursor:pointer">Sign in</MudLink>
                     </MudAlert>
                 </MudContainer>
             </NotAuthorized>

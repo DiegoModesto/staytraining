@@ -1,11 +1,13 @@
 @page "/workouts/{WorkoutId:guid}"
-@rendermode InteractiveServer
 @attribute [Authorize]
+@using Microsoft.AspNetCore.WebUtilities
 @using Web.Blazor.Training
 @inject ITrainingApiClient Api
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthState
+@inject IJSRuntime JS
 
 <PageTitle>Montagem de treino</PageTitle>
 
@@ -25,13 +27,31 @@
     {
         <MudStack Row AlignItems="AlignItems.Center" Class="mb-1">
             <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="GoBack" />
-            <MudText Typo="Typo.h4">@_workout.Name</MudText>
+            @if (_editingName)
+            {
+                <MudTextField @bind-Value="_nameEdit" Immediate="true" Variant="Variant.Outlined"
+                              Margin="Margin.Dense" Style="max-width:360px" />
+                <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Success"
+                               OnClick="SaveName" Disabled="_busy" />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="@(() => _editingName = false)" />
+            }
+            else
+            {
+                <MudText Typo="Typo.h4">@_workout.Name</MudText>
+                @if (_canEdit)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="StartEditName" />
+                }
+            }
             <MudChip T="string" Size="Size.Small" Class="st-cat-chip"
                      Style="@($"color:{CategoryDisplay.Color(_workout.Category)};border-color:{CategoryDisplay.Color(_workout.Category)}")"
                      Variant="Variant.Outlined">@CategoryDisplay.Label(_workout.Category)</MudChip>
             <MudSpacer />
-            <MudButton StartIcon="@Icons.Material.Filled.PlayArrow" Color="Color.Primary" Variant="Variant.Filled"
-                       Disabled="_workout.Items.Count == 0" OnClick="Run">Executar</MudButton>
+            @if (!_isProfessor)
+            {
+                <MudButton StartIcon="@Icons.Material.Filled.PlayArrow" Color="Color.Primary" Variant="Variant.Filled"
+                           Disabled="_ordered.Count == 0" OnClick="Run">Executar</MudButton>
+            }
         </MudStack>
         @if (!string.IsNullOrWhiteSpace(_workout.Description))
         {
@@ -40,7 +60,7 @@
 
         <MudPaper Class="pa-3 mb-3" Elevation="0" Outlined>
             <MudStack Row AlignItems="AlignItems.Center">
-                <MudText Typo="Typo.subtitle1">@_workout.Items.Count exercício(s)</MudText>
+                <MudText Typo="Typo.subtitle1">@_ordered.Count exercício(s)</MudText>
                 <MudSpacer />
                 <PermissionView Permission="workout.write">
                     <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary"
@@ -49,43 +69,57 @@
             </MudStack>
         </MudPaper>
 
-        @if (_workout.Items.Count == 0)
+        @if (_ordered.Count == 0)
         {
             <MudAlert Severity="Severity.Info">Treino vazio. Adicione exercícios para montar a ficha.</MudAlert>
         }
         else
         {
-            <MudList T="WorkoutItemDto">
-                @{ var ordered = _workout.Items.OrderBy(i => i.Order).ToList(); }
-                @for (int idx = 0; idx < ordered.Count; idx++)
-                {
-                    var item = ordered[idx];
-                    var position = idx;
-                    <MudPaper Class="pa-3 mb-2" Outlined Elevation="0">
+            @* Keyed on a version bumped by add/remove so the container is rebuilt (fresh event wiring)
+               on structural changes; reorder keeps the same key so drag/animation stay smooth. *@
+            <MudDropContainer T="WorkoutItemDto" @key="_structureVersion" @ref="_dropContainer" Items="_ordered"
+                              ItemsSelector="@((item, zone) => true)" ItemDropped="OnItemDropped"
+                              CanDrop="@((item, zone) => _canEdit)">
+                <ChildContent>
+                    <MudDropZone T="WorkoutItemDto" Identifier="items" AllowReorder="true"
+                                 Class="st-reorder-zone" />
+                </ChildContent>
+                <ItemRenderer>
+                    @{
+                        int idx = _ordered.IndexOf(context);
+                    }
+                    <MudPaper Class="pa-3 mb-2 st-workout-item" Outlined Elevation="0"
+                              data-flip-id="@context.Id" @key="context.Id">
                         <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
+                            @if (_canEdit)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small"
+                                         Class="st-drag-handle" />
+                            }
                             <MudText Typo="Typo.h6" Style="width:34px;text-align:center">@(idx + 1)</MudText>
                             <div style="flex:1">
-                                <MudText Typo="Typo.subtitle1">@ExerciseName(item.ExerciseId)</MudText>
+                                <MudText Typo="Typo.subtitle1">@ExerciseName(context.ExerciseId)</MudText>
                                 <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)">
-                                    @(string.IsNullOrWhiteSpace(item.SectionLabel) ? "" : $"{item.SectionLabel} · ")@Prescription(item)
+                                    @(string.IsNullOrWhiteSpace(context.SectionLabel) ? "" : $"{context.SectionLabel} · ")@Prescription(context)
                                 </MudText>
-                                @if (!string.IsNullOrWhiteSpace(item.ProfessorComment))
+                                @if (!string.IsNullOrWhiteSpace(context.ProfessorComment))
                                 {
-                                    <MudText Typo="Typo.caption">💬 @item.ProfessorComment</MudText>
+                                    <MudText Typo="Typo.caption">💬 @context.ProfessorComment</MudText>
                                 }
                             </div>
-                            <PermissionView Permission="workout.write">
+                            @if (_canEdit)
+                            {
                                 <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small"
-                                               Disabled="@(position == 0 || _busy)" OnClick="() => Move(position, -1)" />
+                                               Disabled="@(idx == 0 || _busy)" OnClick="() => Move(idx, -1)" />
                                 <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small"
-                                               Disabled="@(position == ordered.Count - 1 || _busy)" OnClick="() => Move(position, 1)" />
+                                               Disabled="@(idx == _ordered.Count - 1 || _busy)" OnClick="() => Move(idx, 1)" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                               Disabled="_busy" OnClick="() => Remove(item.Id)" />
-                            </PermissionView>
+                                               Disabled="_busy" OnClick="() => Remove(context.Id)" />
+                            }
                         </MudStack>
                     </MudPaper>
-                }
-            </MudList>
+                </ItemRenderer>
+            </MudDropContainer>
         }
     }
 </PermissionView>
@@ -94,12 +128,24 @@
     [Parameter] public Guid WorkoutId { get; set; }
 
     private WorkoutDetailDto? _workout;
+    private readonly List<WorkoutItemDto> _ordered = [];
     private Dictionary<Guid, string> _exerciseNames = new();
+    private MudDropContainer<WorkoutItemDto>? _dropContainer;
     private bool _loading = true;
     private bool _busy;
+    private bool _isProfessor;
+    private bool _canEdit;
+    private bool _playFlip;
+    private bool _editingName;
+    private string _nameEdit = string.Empty;
+    private int _structureVersion;
 
     protected override async Task OnInitializedAsync()
     {
+        AuthenticationState state = await AuthState.GetAuthenticationStateAsync();
+        _isProfessor = state.User.Claims.Any(c => c.Type == "permission" && c.Value == "workout.write");
+        _canEdit = _isProfessor;
+
         try
         {
             var exercises = await Api.ListExercisesAsync(null, CancellationToken.None);
@@ -116,6 +162,14 @@
         try
         {
             _workout = await Api.GetWorkoutAsync(WorkoutId, CancellationToken.None);
+
+            // Mutate the SAME list instance the MudDropContainer is bound to (then Refresh),
+            // otherwise the container keeps rendering its previous snapshot until a page reload.
+            _ordered.Clear();
+            if (_workout is not null)
+            {
+                _ordered.AddRange(_workout.Items.OrderBy(i => i.Order));
+            }
         }
         catch (Exception ex)
         {
@@ -125,6 +179,9 @@
         {
             _loading = false;
         }
+
+        _dropContainer?.Refresh();
+        StateHasChanged();
     }
 
     private string ExerciseName(Guid id) =>
@@ -140,9 +197,68 @@
         return $"{i.Sets} × {i.Reps} · {i.RestSeconds}s descanso";
     }
 
-    private void GoBack() => Nav.NavigateTo($"/students/{_workout?.OwnerStudentId}");
+    private async Task GoBack()
+    {
+        // A "from" query set by the caller (student sheet / weekly schedule) is the source of truth.
+        Uri uri = Nav.ToAbsoluteUri(Nav.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("from", out var from) && !string.IsNullOrEmpty(from!))
+        {
+            Nav.NavigateTo(from!);
+            return;
+        }
+
+        // Otherwise resolve the student's sheet from the owner (OwnerStudentId is the auth user id,
+        // NOT the StudentProfile id, so we look up the profile to build the correct /students/{id}).
+        if (_workout is not null)
+        {
+            try
+            {
+                var students = await Api.ListStudentsAsync(CancellationToken.None);
+                var profile = students.FirstOrDefault(s => s.UserId == _workout.OwnerStudentId);
+                if (profile is not null)
+                {
+                    Nav.NavigateTo($"/students/{profile.Id}");
+                    return;
+                }
+            }
+            catch { /* fall through to the list */ }
+        }
+
+        Nav.NavigateTo("/students");
+    }
 
     private void Run() => Nav.NavigateTo($"/workouts/{WorkoutId}/run");
+
+    private void StartEditName()
+    {
+        _nameEdit = _workout?.Name ?? string.Empty;
+        _editingName = true;
+    }
+
+    private async Task SaveName()
+    {
+        if (_workout is null || string.IsNullOrWhiteSpace(_nameEdit))
+        {
+            Snackbar.Add("Informe um nome para o treino.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.RenameWorkoutAsync(WorkoutId, _nameEdit.Trim(), CancellationToken.None);
+            _editingName = false;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao renomear: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
 
     private async Task AddItem()
     {
@@ -157,6 +273,7 @@
         try
         {
             await Api.AddWorkoutItemAsync(WorkoutId, picked.Item, CancellationToken.None);
+            _structureVersion++;
             await LoadAsync();
         }
         catch (Exception ex)
@@ -175,6 +292,7 @@
         try
         {
             await Api.RemoveWorkoutItemAsync(WorkoutId, itemId, CancellationToken.None);
+            _structureVersion++;
             await LoadAsync();
         }
         catch (Exception ex)
@@ -187,31 +305,62 @@
         }
     }
 
+    /// <summary>Drag-and-drop reorder within the single zone.</summary>
+    private async Task OnItemDropped(MudItemDropInfo<WorkoutItemDto> info)
+    {
+        if (!_canEdit || info.Item is null)
+        {
+            return;
+        }
+
+        _ordered.Remove(info.Item);
+        int index = Math.Clamp(info.IndexInZone, 0, _ordered.Count);
+        _ordered.Insert(index, info.Item);
+        _dropContainer?.Refresh();
+
+        await PersistOrderAsync();
+    }
+
+    /// <summary>Button reorder (up/down) — animated smoothly on screen via a FLIP transition.</summary>
     private async Task Move(int position, int delta)
     {
-        if (_workout is null)
-        {
-            return;
-        }
-
-        var ordered = _workout.Items.OrderBy(i => i.Order).Select(i => i.Id).ToList();
         int target = position + delta;
-        if (target < 0 || target >= ordered.Count)
+        if (target < 0 || target >= _ordered.Count)
         {
             return;
         }
 
-        (ordered[position], ordered[target]) = (ordered[target], ordered[position]);
+        // Capture positions before the DOM changes, then let OnAfterRender play the transition.
+        try { await JS.InvokeVoidAsync("stFlip.snapshot", ".st-reorder-zone"); } catch { /* JS best-effort */ }
 
+        (_ordered[position], _ordered[target]) = (_ordered[target], _ordered[position]);
+        _playFlip = true;
+        _dropContainer?.Refresh();
+        StateHasChanged();
+
+        await PersistOrderAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_playFlip)
+        {
+            _playFlip = false;
+            try { await JS.InvokeVoidAsync("stFlip.play", ".st-reorder-zone"); } catch { /* JS best-effort */ }
+        }
+    }
+
+    private async Task PersistOrderAsync()
+    {
         _busy = true;
         try
         {
-            await Api.ReorderWorkoutItemsAsync(WorkoutId, ordered, CancellationToken.None);
-            await LoadAsync();
+            await Api.ReorderWorkoutItemsAsync(WorkoutId, _ordered.Select(i => i.Id).ToList(), CancellationToken.None);
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Falha ao reordenar: {ex.Message}", Severity.Error);
+            await LoadAsync(); // revert to server truth
         }
         finally
         {

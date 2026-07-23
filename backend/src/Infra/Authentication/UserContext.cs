@@ -46,4 +46,14 @@ internal sealed class UserContext(IHttpContextAccessor httpContextAccessor) : IU
 
     public bool IsAuthenticated =>
         httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated ?? false;
+
+    public string? Name
+    {
+        get
+        {
+            ClaimsPrincipal? user = httpContextAccessor.HttpContext?.User;
+            return user?.FindFirstValue("name")
+                ?? user?.FindFirstValue("preferred_username");
+        }
+    }
 }

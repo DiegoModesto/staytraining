@@ -1,0 +1,51 @@
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            Anotação interna do corpo docente — visível a todos os professores, nunca ao aluno.
+        </MudText>
+        <MudTextField @bind-Value="_content" Label="Anotação" Lines="4" Required AutoFocus />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public Guid StudentProfileId { get; set; }
+
+    private string _content = string.Empty;
+    private bool _busy;
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_content))
+        {
+            Snackbar.Add("Escreva a anotação.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.AddStudentNoteAsync(StudentProfileId, new AddStudentNoteRequest(_content), CancellationToken.None);
+            Snackbar.Add("Anotação adicionada.", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

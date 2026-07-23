@@ -33,6 +33,7 @@ public class GetSampleEntityByIdQueryHandlerTests
         public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
         public DbSet<StudentProfile> StudentProfiles => Set<StudentProfile>();
         public DbSet<HealthObservation> HealthObservations => Set<HealthObservation>();
+        public DbSet<StudentNote> StudentNotes => Set<StudentNote>();
     }
 
     private static TestDbContext CreateContext() =>

@@ -15,8 +15,13 @@ public interface ITrainingApiClient
     Task<Guid> RegisterStudentAsync(RegisterStudentRequest request, CancellationToken ct);
     Task<Guid> AddHealthObservationAsync(Guid studentId, AddHealthObservationRequest request, CancellationToken ct);
 
+    Task<IReadOnlyList<StudentNoteDto>> ListStudentNotesAsync(Guid studentId, CancellationToken ct);
+    Task<Guid> AddStudentNoteAsync(Guid studentId, AddStudentNoteRequest request, CancellationToken ct);
+
     Task<IReadOnlyList<WorkoutListItemDto>> ListWorkoutsAsync(Guid? ownerStudentId, CancellationToken ct);
     Task<Guid> CreateWorkoutFromTemplateAsync(CreateWorkoutFromTemplateRequest request, CancellationToken ct);
+    Task DeleteWorkoutAsync(Guid workoutId, CancellationToken ct);
+    Task RenameWorkoutAsync(Guid workoutId, string name, CancellationToken ct);
 
     // Workout building (custom / item-by-item)
     Task<Guid> CreateWorkoutAsync(CreateWorkoutRequest request, CancellationToken ct);

@@ -83,3 +83,12 @@
 @media (max-width: 440px) {
     .st-week-grid { grid-template-columns: 1fr; }
 }
+
+/* ---- Workout item reorder (drag & drop + smooth button reorder) ---- */
+.st-reorder-zone { display: flex; flex-direction: column; }
+.st-workout-item { will-change: transform; }
+.st-drag-handle { cursor: grab; color: var(--mud-palette-text-secondary); }
+.st-drag-handle:active { cursor: grabbing; }
+/* MudBlazor drop-zone visual affordances */
+.mud-drop-item-dragging { opacity: .5; }
+.mud-drop-item-preview { box-shadow: 0 8px 24px rgba(0,0,0,.35); }

@@ -6,12 +6,15 @@ using Application.Workouts.Templates.List;
 using Application.Workouts.Workouts.AddItem;
 using Application.Workouts.Workouts.Create;
 using Application.Workouts.Workouts.CreateFromTemplate;
+using Application.Workouts.Workouts.Delete;
 using Application.Workouts.Workouts.GetById;
+using Application.Workouts.Workouts.Rename;
 using Application.Workouts.Workouts.List;
 using Application.Workouts.Workouts.RemoveItem;
 using Application.Workouts.Workouts.ReorderItems;
 using Domain.Exercises;
 using Domain.Workouts;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
 namespace Application.UnitTests.Workouts;
@@ -234,5 +237,61 @@ public class WorkoutTests
         result.IsSuccess.ShouldBeTrue();
         db.WorkoutItems.Single(i => i.Id == b).Order.ShouldBe(1);
         db.WorkoutItems.Single(i => i.Id == a).Order.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task DeleteWorkout_soft_deletes_and_hides_from_reads()
+    {
+        var tenant = Guid.NewGuid();
+        var id = Guid.NewGuid();
+        await using var db = TestHarness.NewContext();
+        db.Workouts.Add(new Workout { Id = id, TenantId = tenant, OwnerStudentId = Guid.NewGuid(), Name = "W" });
+        await db.SaveChangesAsync();
+
+        var handler = new DeleteWorkoutCommandHandler(db, TestHarness.User(tenant));
+        var result = await handler.Handle(new DeleteWorkoutCommand(id), CancellationToken.None);
+        result.IsSuccess.ShouldBeTrue();
+
+        // Soft-deleted: the global !IsDeleted filter hides it from normal reads.
+        db.Workouts.Any(w => w.Id == id).ShouldBeFalse();
+        var deleted = db.Workouts.IgnoreQueryFilters().Single(w => w.Id == id);
+        deleted.IsDeleted.ShouldBeTrue();
+        deleted.DeletedAt.ShouldNotBeNull();
+
+        var again = await handler.Handle(new DeleteWorkoutCommand(id), CancellationToken.None);
+        again.IsFailure.ShouldBeTrue();
+        again.Error.Code.ShouldBe("Workout.NotFound");
+    }
+
+    [Fact]
+    public async Task DeleteWorkout_notFound_when_absent()
+    {
+        var tenant = Guid.NewGuid();
+        await using var db = TestHarness.NewContext();
+        var handler = new DeleteWorkoutCommandHandler(db, TestHarness.User(tenant));
+
+        var result = await handler.Handle(new DeleteWorkoutCommand(Guid.NewGuid()), CancellationToken.None);
+        result.IsFailure.ShouldBeTrue();
+        result.Error.Code.ShouldBe("Workout.NotFound");
+    }
+
+    [Fact]
+    public async Task RenameWorkout_updates_trimmed_name_and_notFound_when_absent()
+    {
+        var tenant = Guid.NewGuid();
+        var id = Guid.NewGuid();
+        await using var db = TestHarness.NewContext();
+        db.Workouts.Add(new Workout { Id = id, TenantId = tenant, OwnerStudentId = Guid.NewGuid(), Name = "Antigo" });
+        await db.SaveChangesAsync();
+
+        var handler = new RenameWorkoutCommandHandler(db, TestHarness.User(tenant));
+
+        var ok = await handler.Handle(new RenameWorkoutCommand(id, "  Treino A  "), CancellationToken.None);
+        ok.IsSuccess.ShouldBeTrue();
+        db.Workouts.Single(w => w.Id == id).Name.ShouldBe("Treino A");
+
+        var missing = await handler.Handle(new RenameWorkoutCommand(Guid.NewGuid(), "X"), CancellationToken.None);
+        missing.IsFailure.ShouldBeTrue();
+        missing.Error.Code.ShouldBe("Workout.NotFound");
     }
 }

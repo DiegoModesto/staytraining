@@ -5,11 +5,12 @@ using Microsoft.EntityFrameworkCore;
 namespace Application.UnitTests.Support;
 
 /// <summary>Deterministic fake of <see cref="IUserContext"/> for handler tests.</summary>
-public sealed class FakeUserContext(Guid? tenantId, Guid userId) : IUserContext
+public sealed class FakeUserContext(Guid? tenantId, Guid userId, string? name = null) : IUserContext
 {
     public Guid UserId { get; } = userId;
     public Guid? TenantId { get; } = tenantId;
     public bool IsAuthenticated => true;
+    public string? Name { get; } = name;
 }
 
 /// <summary>
@@ -25,6 +26,6 @@ public static class TestHarness
             .EnableSensitiveDataLogging()
             .Options);
 
-    public static FakeUserContext User(Guid tenantId, Guid? userId = null) =>
-        new(tenantId, userId ?? Guid.NewGuid());
+    public static FakeUserContext User(Guid tenantId, Guid? userId = null, string? name = null) =>
+        new(tenantId, userId ?? Guid.NewGuid(), name);
 }

@@ -1,4 +1,5 @@
 @using System.Security.Claims
+@inject NavigationManager Nav
 
 <AuthorizeView>
     <Authorized>
@@ -12,7 +13,8 @@
         </form>
     </Authorized>
     <NotAuthorized>
-        <MudButton Href="/login" Variant="Variant.Outlined" Color="Color.Inherit"
+        <MudButton OnClick="@(() => Nav.NavigateTo("/login", forceLoad: true))"
+                   Variant="Variant.Outlined" Color="Color.Inherit"
                    StartIcon="@Icons.Material.Filled.Login">
             Login
         </MudButton>

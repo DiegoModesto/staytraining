@@ -11,6 +11,13 @@ public sealed record HealthObservationResponse(
     string? Detail,
     DateTimeOffset CreatedAt);
 
+public sealed record StudentNoteResponse(
+    Guid Id,
+    Guid AuthorUserId,
+    string AuthorName,
+    string Content,
+    DateTimeOffset CreatedAt);
+
 public sealed record StudentDetailResponse(
     Guid Id,
     Guid UserId,
