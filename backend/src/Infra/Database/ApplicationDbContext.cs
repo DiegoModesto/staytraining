@@ -6,6 +6,7 @@ using Domain.HealthCatalog;
 using Domain.Modalities;
 using Domain.MuscleGroups;
 using Domain.Profiles;
+using Domain.Questions;
 using Domain.SampleEntities;
 using Domain.Students;
 using Domain.Workouts;
@@ -43,6 +44,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<BodyPart> BodyParts { get; set; }
     public DbSet<ProblemType> ProblemTypes { get; set; }
+
+    public DbSet<Question> Questions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

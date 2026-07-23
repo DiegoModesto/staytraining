@@ -34,6 +34,8 @@ public static class PermissionCodes
     public const string SessionWrite = "session.write";
     public const string NoteWrite = "note.write";
     public const string ReportRead = "report.read";
+    public const string QuestionAsk = "question.ask";
+    public const string QuestionAnswer = "question.answer";
 
     public static IReadOnlyCollection<(string Code, string Description)> All { get; } =
     [
@@ -67,12 +69,15 @@ public static class PermissionCodes
         (SessionWrite, "Start and complete workout sessions"),
         (NoteWrite, "Create exercise notes"),
         (ReportRead, "Read training reports"),
+        (QuestionAsk, "Ask the professor a question about a workout or exercise"),
+        (QuestionAnswer, "Answer students' questions"),
     ];
 
     /// <summary>Permissions granted to the Aluno (student) role.</summary>
     public static IReadOnlyCollection<string> StudentRole { get; } =
     [
         ModalityRead, HealthCatalogRead, ExerciseRead, TemplateRead, WorkoutRead, SessionWrite, NoteWrite, ReportRead,
+        QuestionAsk,
     ];
 
     /// <summary>Permissions granted to the Professor (teacher) role — superset of the student's.</summary>
@@ -80,7 +85,7 @@ public static class PermissionCodes
     [
         ModalityRead, HealthCatalogRead, ExerciseRead, ExerciseWrite, TemplateRead, TemplateWrite,
         WorkoutRead, WorkoutWrite, StudentRead, StudentManage, HealthRead, HealthWrite,
-        SessionWrite, NoteWrite, ReportRead,
+        SessionWrite, NoteWrite, ReportRead, QuestionAnswer,
     ];
 
     /// <summary>

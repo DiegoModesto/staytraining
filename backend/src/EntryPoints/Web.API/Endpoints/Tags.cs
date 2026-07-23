@@ -17,4 +17,5 @@ public static class Tags
     public const string Devices = "Devices";
     public const string Sync = "Sync";
     public const string Students = "Students";
+    public const string Questions = "Questions";
 }

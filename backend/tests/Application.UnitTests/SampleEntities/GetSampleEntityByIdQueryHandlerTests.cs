@@ -42,6 +42,7 @@ public class GetSampleEntityByIdQueryHandlerTests
         public DbSet<StudentEditLog> StudentEditLogs => Set<StudentEditLog>();
         public DbSet<BodyPart> BodyParts => Set<BodyPart>();
         public DbSet<ProblemType> ProblemTypes => Set<ProblemType>();
+        public DbSet<Domain.Questions.Question> Questions => Set<Domain.Questions.Question>();
     }
 
     private static TestDbContext CreateContext() =>

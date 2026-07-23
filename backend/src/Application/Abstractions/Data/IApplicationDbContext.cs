@@ -5,6 +5,7 @@ using Domain.HealthCatalog;
 using Domain.Modalities;
 using Domain.MuscleGroups;
 using Domain.Profiles;
+using Domain.Questions;
 using Domain.SampleEntities;
 using Domain.Students;
 using Domain.Workouts;
@@ -40,6 +41,8 @@ public interface IApplicationDbContext
 
     DbSet<BodyPart> BodyParts { get; }
     DbSet<ProblemType> ProblemTypes { get; }
+
+    DbSet<Question> Questions { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
