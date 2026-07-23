@@ -8,6 +8,7 @@ import '../../features/home/home_screen.dart';
 import '../../features/notes/notes_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/reports/weekly_report_screen.dart';
+import '../../features/workouts/workout_builder_screen.dart';
 import '../../features/workouts/workout_detail_screen.dart';
 import '../../features/workouts/workouts_screen.dart';
 import '../di/providers.dart';
@@ -29,6 +30,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
       GoRoute(path: '/', builder: (c, s) => const HomeScreen()),
       GoRoute(path: '/workouts', builder: (c, s) => const WorkoutsScreen()),
+      GoRoute(path: '/workouts/new', builder: (c, s) => const WorkoutBuilderScreen()),
       GoRoute(
         path: '/workouts/:id',
         builder: (c, s) => WorkoutDetailScreen(workoutId: s.pathParameters['id']!),

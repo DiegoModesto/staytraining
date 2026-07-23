@@ -66,7 +66,16 @@ class _WorkoutsScreenState extends ConsumerState<WorkoutsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Meus treinos')),
+      appBar: AppBar(
+        title: const Text('Meus treinos'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Criar treino do zero',
+            onPressed: () => context.go('/workouts/new'),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _createFromTemplate,
         icon: const Icon(Icons.content_copy),
