@@ -22,7 +22,13 @@ class _WorkoutsScreenState extends ConsumerState<WorkoutsScreen> {
     _reload();
   }
 
-  void _reload() => setState(() => _future = ref.read(trainingApiProvider).listWorkouts());
+  void _reload() {
+    // Block body (not an arrow): assigning inside an arrow closure returns the Future, and
+    // setState rejects a callback that returns a value.
+    setState(() {
+      _future = ref.read(trainingApiProvider).listWorkouts();
+    });
+  }
 
   Future<void> _createFromTemplate() async {
     final api = ref.read(trainingApiProvider);
