@@ -25,6 +25,7 @@ internal sealed class OpenIddictClientSeedHostedService(
         await SeedBffAsync(manager, cancellationToken);
         await SeedWebApiAsync(manager, cancellationToken);
         await SeedGatewayAsync(manager, cancellationToken);
+        await SeedMobileAppAsync(manager, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -61,6 +62,49 @@ internal sealed class OpenIddictClientSeedHostedService(
                 OpenIddictConstants.Permissions.Scopes.Profile,
                 OpenIddictConstants.Permissions.Prefixes.Scope + "api:web",
                 OpenIddictConstants.Permissions.Prefixes.Scope + "offline_access"
+            }
+        };
+
+        await manager.CreateAsync(descriptor, ct);
+        logger.LogInformation("Seeded OpenIddict application '{ClientId}'.", clientId);
+    }
+
+    private async Task SeedMobileAppAsync(IOpenIddictApplicationManager manager, CancellationToken ct)
+    {
+        const string clientId = "mobile-app";
+        object? existing = await manager.FindByClientIdAsync(clientId, ct);
+        if (existing is not null)
+        {
+            logger.LogDebug("OpenIddict application '{ClientId}' already exists; skipping seed.", clientId);
+            return;
+        }
+
+        // Native app: public client (no secret), Authorization Code + PKCE, with a custom URL scheme
+        // redirect. Matches the Flutter app's AppConfig (client id, redirect URI, scopes).
+        var descriptor = new OpenIddictApplicationDescriptor
+        {
+            ClientId = clientId,
+            ClientType = OpenIddictConstants.ClientTypes.Public,
+            DisplayName = "StayTraining Mobile",
+#pragma warning disable S1075 // Hardcoded URI is intentional: fixed custom-scheme redirect for the mobile client.
+            RedirectUris = { new Uri("com.staytraining.app://oauth") },
+#pragma warning restore S1075
+            Permissions =
+            {
+                OpenIddictConstants.Permissions.Endpoints.Authorization,
+                OpenIddictConstants.Permissions.Endpoints.Token,
+                OpenIddictConstants.Permissions.Endpoints.EndSession,
+                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                OpenIddictConstants.Permissions.ResponseTypes.Code,
+                OpenIddictConstants.Permissions.Scopes.Email,
+                OpenIddictConstants.Permissions.Scopes.Profile,
+                OpenIddictConstants.Permissions.Prefixes.Scope + "api:web",
+                OpenIddictConstants.Permissions.Prefixes.Scope + "offline_access"
+            },
+            Requirements =
+            {
+                OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange
             }
         };
 

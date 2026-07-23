@@ -20,6 +20,9 @@ class AppConfig {
 
   static const List<String> authScopes = ['openid', 'profile', 'offline_access', 'api:web'];
 
+  /// Permit OIDC over plain HTTP (local dev): true when the issuer is not HTTPS.
+  static bool get authAllowInsecure => authIssuer.startsWith('http://');
+
   /// Days without doing a scheduled workout before the local "pending" reminder fires.
   static const int pendingWorkoutDays = 3;
 

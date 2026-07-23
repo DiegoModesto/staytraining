@@ -33,6 +33,7 @@ class AuthService {
         issuer: AppConfig.authIssuer,
         scopes: AppConfig.authScopes,
         promptValues: ['login'],
+        allowInsecureConnections: AppConfig.authAllowInsecure,
       ),
     );
     final token = result.accessToken;
@@ -55,6 +56,7 @@ class AuthService {
           refreshToken: refreshToken,
           scopes: AppConfig.authScopes,
           grantType: 'refresh_token',
+          allowInsecureConnections: AppConfig.authAllowInsecure,
         ),
       );
       final token = result.accessToken;
