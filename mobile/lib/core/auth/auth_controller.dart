@@ -22,25 +22,20 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> loginOidc() async {
+  Future<bool> login(String email, String password) async {
     _busy = true;
     _error = null;
     notifyListeners();
     try {
-      final ok = await _service.loginWithOidc();
+      final ok = await _service.login(email, password);
+      if (!ok) {
+        _error = 'E-mail ou senha inválidos.';
+      }
       return ok;
-    } catch (e) {
-      _error = e.toString();
-      return false;
     } finally {
       _busy = false;
       notifyListeners();
     }
-  }
-
-  Future<void> loginManual(String token) async {
-    await _service.setManualToken(token.trim());
-    notifyListeners();
   }
 
   Future<void> logout() async {

@@ -1,19 +1,21 @@
-import 'package:flutter_appauth/flutter_appauth.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config/app_config.dart';
 
-/// Handles authentication: OIDC (Authorization Code + PKCE) against Auth.API, with the
-/// access token persisted in secure storage. A dev fallback lets you paste a token directly.
+/// Handles authentication via the OpenIddict **password grant** (email + password) against
+/// Auth.API, persisting the opaque access/refresh tokens in secure storage. Tokens are renewed
+/// silently with the refresh token (see [refresh]).
 class AuthService {
-  AuthService({FlutterAppAuth? appAuth, FlutterSecureStorage? storage})
-      : _appAuth = appAuth ?? const FlutterAppAuth(),
+  AuthService({Dio? http, FlutterSecureStorage? storage})
+      : _http = http ?? Dio(BaseOptions(baseUrl: AppConfig.authIssuer)),
         _storage = storage ?? const FlutterSecureStorage();
 
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
+  static const _tokenPath = '/connect/token';
 
-  final FlutterAppAuth _appAuth;
+  final Dio _http;
   final FlutterSecureStorage _storage;
 
   String? _accessToken;
@@ -24,52 +26,53 @@ class AuthService {
     _accessToken = await _storage.read(key: _accessTokenKey);
   }
 
-  /// Interactive OIDC login. Returns true on success.
-  Future<bool> loginWithOidc() async {
-    final result = await _appAuth.authorizeAndExchangeCode(
-      AuthorizationTokenRequest(
-        AppConfig.authClientId,
-        AppConfig.authRedirectUri,
-        issuer: AppConfig.authIssuer,
-        scopes: AppConfig.authScopes,
-        promptValues: ['login'],
-        allowInsecureConnections: AppConfig.authAllowInsecure,
-      ),
-    );
-    final token = result.accessToken;
-    if (token == null) return false;
-    await _persist(token, result.refreshToken);
-    return true;
-  }
-
-  /// Exchanges the stored refresh token for a new access token (silent refresh).
-  /// Returns false when there is no refresh token (e.g. dev manual token) or the exchange fails.
-  Future<bool> refresh() async {
-    final refreshToken = await _storage.read(key: _refreshTokenKey);
-    if (refreshToken == null || refreshToken.isEmpty) return false;
+  /// Signs in with email + password. Returns true on success; false for invalid credentials or
+  /// any error (network, server). Never throws.
+  Future<bool> login(String email, String password) async {
     try {
-      final result = await _appAuth.token(
-        TokenRequest(
-          AppConfig.authClientId,
-          AppConfig.authRedirectUri,
-          issuer: AppConfig.authIssuer,
-          refreshToken: refreshToken,
-          scopes: AppConfig.authScopes,
-          grantType: 'refresh_token',
-          allowInsecureConnections: AppConfig.authAllowInsecure,
-        ),
+      final response = await _http.post<Map<String, dynamic>>(
+        _tokenPath,
+        data: {
+          'grant_type': 'password',
+          'username': email.trim(),
+          'password': password,
+          'client_id': AppConfig.authClientId,
+          'scope': AppConfig.authScopes.join(' '),
+        },
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
-      final token = result.accessToken;
-      if (token == null) return false;
-      await _persist(token, result.refreshToken ?? refreshToken);
+      final token = response.data?['access_token'] as String?;
+      if (token == null || token.isEmpty) return false;
+      await _persist(token, response.data?['refresh_token'] as String?);
       return true;
     } catch (_) {
       return false;
     }
   }
 
-  /// Dev/testing fallback: store a bearer token obtained out-of-band.
-  Future<void> setManualToken(String token) => _persist(token, null);
+  /// Exchanges the stored refresh token for a new access token (silent refresh).
+  /// Returns false when there is no refresh token or the exchange fails.
+  Future<bool> refresh() async {
+    final refreshToken = await _storage.read(key: _refreshTokenKey);
+    if (refreshToken == null || refreshToken.isEmpty) return false;
+    try {
+      final response = await _http.post<Map<String, dynamic>>(
+        _tokenPath,
+        data: {
+          'grant_type': 'refresh_token',
+          'refresh_token': refreshToken,
+          'client_id': AppConfig.authClientId,
+        },
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+      final token = response.data?['access_token'] as String?;
+      if (token == null || token.isEmpty) return false;
+      await _persist(token, response.data?['refresh_token'] as String? ?? refreshToken);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 
   Future<void> logout() async {
     _accessToken = null;
@@ -80,7 +83,7 @@ class AuthService {
   Future<void> _persist(String accessToken, String? refreshToken) async {
     _accessToken = accessToken;
     await _storage.write(key: _accessTokenKey, value: accessToken);
-    if (refreshToken != null) {
+    if (refreshToken != null && refreshToken.isNotEmpty) {
       await _storage.write(key: _refreshTokenKey, value: refreshToken);
     }
   }
