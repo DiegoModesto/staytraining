@@ -1,4 +1,5 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 EXPOSE 8080
 
@@ -38,4 +39,4 @@ USER 1654:1654
 ENTRYPOINT ["dotnet", "Gateway.dll"]
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
-  CMD wget --quiet --tries=1 --spider http://localhost:8080/health/live || exit 1
+  CMD curl -f http://localhost:8080/health/live || exit 1
