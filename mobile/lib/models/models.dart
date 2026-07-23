@@ -252,3 +252,105 @@ class WeeklyReportExercise {
         maxLoadKg: (j['maxLoadKg'] as num?)?.toDouble(),
       );
 }
+
+// ----- Profile / ficha -----
+
+// Mirrors Domain.Profiles.BloodType (numeric JSON).
+enum BloodType { unknown, aPositive, aNegative, bPositive, bNegative, abPositive, abNegative, oPositive, oNegative }
+
+BloodType bloodTypeFromInt(int v) =>
+    BloodType.values[(v >= 0 && v < BloodType.values.length) ? v : 0];
+
+extension BloodTypeLabel on BloodType {
+  String get label => switch (this) {
+        BloodType.aPositive => 'A+',
+        BloodType.aNegative => 'A−',
+        BloodType.bPositive => 'B+',
+        BloodType.bNegative => 'B−',
+        BloodType.abPositive => 'AB+',
+        BloodType.abNegative => 'AB−',
+        BloodType.oPositive => 'O+',
+        BloodType.oNegative => 'O−',
+        _ => 'Não informado',
+      };
+}
+
+class ProfileApportment {
+  ProfileApportment({required this.id, required this.bodyPartName, required this.problemTypeName, this.observation});
+  final String id;
+  final String bodyPartName;
+  final String problemTypeName;
+  final String? observation;
+
+  factory ProfileApportment.fromJson(Map<String, dynamic> j) => ProfileApportment(
+        id: j['id'] as String,
+        bodyPartName: (j['bodyPartName'] ?? '') as String,
+        problemTypeName: (j['problemTypeName'] ?? '') as String,
+        observation: j['observation'] as String?,
+      );
+}
+
+class Profile {
+  Profile({
+    required this.isStudent,
+    required this.fullName,
+    required this.email,
+    this.phone,
+    this.emergencyPhone,
+    this.bloodType = BloodType.unknown,
+    this.heightCm,
+    this.weightKg,
+    this.photoUrl,
+    this.apportments = const [],
+  });
+
+  final bool isStudent;
+  final String fullName;
+  final String email;
+  final String? phone;
+  final String? emergencyPhone;
+  final BloodType bloodType;
+  final int? heightCm;
+  final double? weightKg;
+  final String? photoUrl;
+  final List<ProfileApportment> apportments;
+
+  factory Profile.fromJson(Map<String, dynamic> j) => Profile(
+        isStudent: (j['isStudent'] as bool?) ?? false,
+        fullName: (j['fullName'] ?? '') as String,
+        email: (j['email'] ?? '') as String,
+        phone: j['phone'] as String?,
+        emergencyPhone: j['emergencyPhone'] as String?,
+        bloodType: bloodTypeFromInt((j['bloodType'] as int?) ?? 0),
+        heightCm: j['heightCm'] as int?,
+        weightKg: (j['weightKg'] as num?)?.toDouble(),
+        photoUrl: j['photoUrl'] as String?,
+        apportments: ((j['apportments'] as List?) ?? [])
+            .map((a) => ProfileApportment.fromJson(a as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+class CatalogProblemType {
+  CatalogProblemType({required this.id, required this.name});
+  final String id;
+  final String name;
+
+  factory CatalogProblemType.fromJson(Map<String, dynamic> j) =>
+      CatalogProblemType(id: j['id'] as String, name: (j['name'] ?? '') as String);
+}
+
+class CatalogBodyPart {
+  CatalogBodyPart({required this.id, required this.name, this.problemTypes = const []});
+  final String id;
+  final String name;
+  final List<CatalogProblemType> problemTypes;
+
+  factory CatalogBodyPart.fromJson(Map<String, dynamic> j) => CatalogBodyPart(
+        id: j['id'] as String,
+        name: (j['name'] ?? '') as String,
+        problemTypes: ((j['problemTypes'] as List?) ?? [])
+            .map((p) => CatalogProblemType.fromJson(p as Map<String, dynamic>))
+            .toList(),
+      );
+}
