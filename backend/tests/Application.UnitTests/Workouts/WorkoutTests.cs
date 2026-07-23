@@ -34,10 +34,11 @@ public class WorkoutTests
     {
         var tenant = Guid.NewGuid();
         await using var db = TestHarness.NewContext();
+        Guid modalityId = TestHarness.SeedModality(db);
         var handler = new CreateWorkoutTemplateCommandHandler(db, TestHarness.User(tenant));
 
         var result = await handler.Handle(
-            new CreateWorkoutTemplateCommand("Costas e Ombro", null, ExerciseCategory.Musculacao, true, "obs",
+            new CreateWorkoutTemplateCommand("Costas e Ombro", null, modalityId, true, "obs",
                 [TItem(1), TItem(2)]),
             CancellationToken.None);
 

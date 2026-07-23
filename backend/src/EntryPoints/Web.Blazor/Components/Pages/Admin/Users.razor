@@ -1,5 +1,6 @@
 @page "/admin/users"
 @attribute [Authorize]
+@using Web.Blazor.Components.Shared
 @inject IAdminGatewayClient Client
 @inject IDialogService DialogService
 @inject NavigationManager Nav
@@ -27,7 +28,8 @@
                   AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
                   DebounceInterval="300" OnDebounceIntervalElapsed="@(async () => await ReloadAsync())" Class="mb-3" />
 
-    <MudDataGrid T="UserSummary" ServerData="@LoadUsers" @ref="_grid" RowsPerPage="20">
+    <MudDataGrid T="UserSummary" ServerData="@LoadUsers" @ref="_grid" RowsPerPage="20"
+                 RowClick="OnRowClick" Hover="true">
         <Columns>
             <PropertyColumn Property="x => x.Email" Title="Email" />
             <PropertyColumn Property="x => x.DisplayName" Title="Display name" />
@@ -50,6 +52,15 @@
     private MudDataGrid<UserSummary>? _grid;
     private string? _search;
     private string? _error;
+    private readonly DoubleClickDetector _dbl = new();
+
+    private void OnRowClick(DataGridRowClickEventArgs<UserSummary> args)
+    {
+        if (args.Item is not null && _dbl.IsDoubleClick(args.Item))
+        {
+            Nav.NavigateTo($"/admin/users/{args.Item.Id}");
+        }
+    }
 
     private async Task<GridData<UserSummary>> LoadUsers(GridState<UserSummary> state)
     {

@@ -4,15 +4,21 @@ using Application.Execution.Schedule;
 using Application.Execution.Sessions.Complete;
 using Application.Execution.Sessions.Start;
 using Application.Execution.Sessions.UpsertNote;
-using Application.Students.AddHealthObservation;
+using Application.Modalities.Create;
+using Application.Modalities.Update;
+using Application.MuscleGroups.Create;
+using Application.MuscleGroups.Update;
+using Application.Profiles.Update;
 using Application.Students.Register;
 using Application.Workouts;
 using Application.Workouts.Templates.Create;
 using Application.Workouts.Workouts.AddItem;
 using Application.Workouts.Workouts.Create;
 using Application.Workouts.Workouts.CreateFromTemplate;
+using Application.Workouts.Workouts.Rename;
 using Domain.Devices;
 using Domain.Exercises;
+using Domain.Profiles;
 using Domain.Students;
 using Shouldly;
 
@@ -107,18 +113,62 @@ public class ValidatorsTests
     }
 
     [Fact]
-    public void AddHealthObservation_requires_student_and_title()
-    {
-        var v = new AddHealthObservationCommandValidator();
-        v.Validate(new AddHealthObservationCommand(Guid.NewGuid(), HealthObservationKind.HealthIssue, "T", "d")).IsValid.ShouldBeTrue();
-        v.Validate(new AddHealthObservationCommand(Guid.Empty, HealthObservationKind.HealthIssue, "", null)).IsValid.ShouldBeFalse();
-    }
-
-    [Fact]
     public void RegisterDeviceToken_requires_token()
     {
         var v = new RegisterDeviceTokenCommandValidator();
         v.Validate(new RegisterDeviceTokenCommand("tok", DevicePlatform.Android)).IsValid.ShouldBeTrue();
         v.Validate(new RegisterDeviceTokenCommand("", DevicePlatform.Android)).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void CreateModality_requires_name_and_hex_color()
+    {
+        var v = new CreateModalityCommandValidator();
+        v.Validate(new CreateModalityCommand("Boxe", "#FF4757", true, 0)).IsValid.ShouldBeTrue();
+        v.Validate(new CreateModalityCommand("", "#FF4757", true, 0)).IsValid.ShouldBeFalse();
+        v.Validate(new CreateModalityCommand("Boxe", "vermelho", true, 0)).IsValid.ShouldBeFalse();
+        v.Validate(new CreateModalityCommand("Boxe", "#FF4757", true, -1)).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void UpdateModality_requires_id_name_and_hex_color()
+    {
+        var v = new UpdateModalityCommandValidator();
+        v.Validate(new UpdateModalityCommand(Guid.NewGuid(), "Boxe", "#abc", true, 0)).IsValid.ShouldBeTrue();
+        v.Validate(new UpdateModalityCommand(Guid.Empty, "Boxe", "#abc", true, 0)).IsValid.ShouldBeFalse();
+        v.Validate(new UpdateModalityCommand(Guid.NewGuid(), "", "#abc", true, 0)).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void CreateAndUpdateMuscleGroup_require_name_and_region()
+    {
+        new CreateMuscleGroupCommandValidator()
+            .Validate(new CreateMuscleGroupCommand("Peito", "Superiores")).IsValid.ShouldBeTrue();
+        new CreateMuscleGroupCommandValidator()
+            .Validate(new CreateMuscleGroupCommand("", "Superiores")).IsValid.ShouldBeFalse();
+        new UpdateMuscleGroupCommandValidator()
+            .Validate(new UpdateMuscleGroupCommand(Guid.NewGuid(), "Peito", "")).IsValid.ShouldBeFalse();
+        new UpdateMuscleGroupCommandValidator()
+            .Validate(new UpdateMuscleGroupCommand(Guid.NewGuid(), "Peito", "Superiores")).IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void UpdateMyProfile_requires_name_email_phone()
+    {
+        var v = new UpdateMyProfileCommandValidator();
+        v.Validate(new UpdateMyProfileCommand("Rita", "r@x.com", "1", "2", BloodType.APositive, 165, 60m)).IsValid.ShouldBeTrue();
+        v.Validate(new UpdateMyProfileCommand("", "r@x.com", "1", null, BloodType.Unknown, null, null)).IsValid.ShouldBeFalse();
+        v.Validate(new UpdateMyProfileCommand("Rita", "nao-email", "1", null, BloodType.Unknown, null, null)).IsValid.ShouldBeFalse();
+        v.Validate(new UpdateMyProfileCommand("Rita", "r@x.com", "", null, BloodType.Unknown, null, null)).IsValid.ShouldBeFalse();
+        v.Validate(new UpdateMyProfileCommand("Rita", "r@x.com", "1", null, BloodType.Unknown, 10, null)).IsValid.ShouldBeFalse(); // altura fora do range
+    }
+
+    [Fact]
+    public void RenameWorkout_requires_id_and_name()
+    {
+        var v = new RenameWorkoutCommandValidator();
+        v.Validate(new RenameWorkoutCommand(Guid.NewGuid(), "Treino A")).IsValid.ShouldBeTrue();
+        v.Validate(new RenameWorkoutCommand(Guid.Empty, "Treino A")).IsValid.ShouldBeFalse();
+        v.Validate(new RenameWorkoutCommand(Guid.NewGuid(), "")).IsValid.ShouldBeFalse();
     }
 }

@@ -11,7 +11,7 @@
         else
         {
             <MudSelect T="Guid" @bind-Value="_workoutId" Label="Treino" Required Class="mb-3"
-                       AnchorOrigin="Origin.BottomCenter">
+                       Placeholder="Selecione o treino" AnchorOrigin="Origin.BottomCenter">
                 @foreach (var w in _workouts)
                 {
                     <MudSelectItem T="Guid" Value="w.Id">@w.Name (@w.ItemCount ex.)</MudSelectItem>

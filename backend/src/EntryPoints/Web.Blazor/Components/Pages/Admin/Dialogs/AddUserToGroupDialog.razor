@@ -9,7 +9,7 @@
         }
         else
         {
-            <MudSelect T="Guid?" @bind-Value="_selectedGroupId" Label="Group" Required="true">
+            <MudSelect T="Guid?" @bind-Value="_selectedGroupId" Label="Group" Required="true" Placeholder="Select a group">
                 @foreach (GroupSummary g in _groups)
                 {
                     <MudSelectItem T="Guid?" Value="@g.Id">@g.Name</MudSelectItem>

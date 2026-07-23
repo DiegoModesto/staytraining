@@ -15,6 +15,11 @@ public static class PermissionCodes
     public const string SampleWrite = "sample.write";
 
     // StayTraining domain permissions
+    public const string ModalityRead = "modality.read";
+    public const string ModalityWrite = "modality.write";
+    public const string MuscleWrite = "muscle.write";
+    public const string HealthCatalogRead = "healthcatalog.read";
+    public const string HealthCatalogWrite = "healthcatalog.write";
     public const string ExerciseRead = "exercise.read";
     public const string ExerciseWrite = "exercise.write";
     public const string TemplateRead = "template.read";
@@ -25,6 +30,7 @@ public static class PermissionCodes
     public const string StudentManage = "student.manage";
     public const string HealthRead = "health.read";
     public const string HealthWrite = "health.write";
+    public const string StudentFichaWrite = "studentficha.write";
     public const string SessionWrite = "session.write";
     public const string NoteWrite = "note.write";
     public const string ReportRead = "report.read";
@@ -42,6 +48,11 @@ public static class PermissionCodes
         (AuditRead, "Read audit events"),
         (SampleRead, "Read sample entities"),
         (SampleWrite, "Create and modify sample entities"),
+        (ModalityRead, "Read training modalities"),
+        (ModalityWrite, "Create, modify and delete training modalities (admin)"),
+        (MuscleWrite, "Create, modify and delete muscle groups (admin)"),
+        (HealthCatalogRead, "Read the health-issue catalog (body parts / problem types)"),
+        (HealthCatalogWrite, "Manage the health-issue catalog (admin)"),
         (ExerciseRead, "Read exercises"),
         (ExerciseWrite, "Create and modify exercises"),
         (TemplateRead, "Read workout templates"),
@@ -52,6 +63,7 @@ public static class PermissionCodes
         (StudentManage, "Register and manage students"),
         (HealthRead, "Read student health observations"),
         (HealthWrite, "Create and modify student health observations"),
+        (StudentFichaWrite, "Edit any student's ficha as an administrator (audited)"),
         (SessionWrite, "Start and complete workout sessions"),
         (NoteWrite, "Create exercise notes"),
         (ReportRead, "Read training reports"),
@@ -60,13 +72,24 @@ public static class PermissionCodes
     /// <summary>Permissions granted to the Aluno (student) role.</summary>
     public static IReadOnlyCollection<string> StudentRole { get; } =
     [
-        ExerciseRead, TemplateRead, WorkoutRead, SessionWrite, NoteWrite, ReportRead,
+        ModalityRead, HealthCatalogRead, ExerciseRead, TemplateRead, WorkoutRead, SessionWrite, NoteWrite, ReportRead,
     ];
 
     /// <summary>Permissions granted to the Professor (teacher) role — superset of the student's.</summary>
     public static IReadOnlyCollection<string> TeacherRole { get; } =
     [
-        ExerciseRead, ExerciseWrite, TemplateRead, TemplateWrite, WorkoutRead, WorkoutWrite,
-        StudentRead, StudentManage, HealthRead, HealthWrite, SessionWrite, NoteWrite, ReportRead,
+        ModalityRead, HealthCatalogRead, ExerciseRead, ExerciseWrite, TemplateRead, TemplateWrite,
+        WorkoutRead, WorkoutWrite, StudentRead, StudentManage, HealthRead, HealthWrite,
+        SessionWrite, NoteWrite, ReportRead,
+    ];
+
+    /// <summary>
+    /// Administrator capabilities layered on top of a base role — the "Configurações" area: managing
+    /// the internal catalogs (modalities, muscle groups, health-issue catalog). Kept out of
+    /// <see cref="TeacherRole"/> so a plain professor can read/pick these but not manage them.
+    /// </summary>
+    public static IReadOnlyCollection<string> Admin { get; } =
+    [
+        ModalityRead, ModalityWrite, MuscleWrite, HealthCatalogRead, HealthCatalogWrite, StudentFichaWrite,
     ];
 }

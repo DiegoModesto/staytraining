@@ -16,6 +16,23 @@
     </PermissionView>
 
     <MudDivider Class="my-2" />
+    <MudText Class="px-4 py-2" Typo="Typo.overline">Configurações</MudText>
+
+    <MudNavLink Href="/settings/profile" Icon="@Icons.Material.Filled.Person">Meu perfil</MudNavLink>
+
+    <PermissionView Permission="modality.write">
+        <MudNavLink Href="/admin/modalities" Icon="@Icons.Material.Filled.Category">Modalidades</MudNavLink>
+    </PermissionView>
+
+    <PermissionView Permission="muscle.write">
+        <MudNavLink Href="/admin/muscles" Icon="@Icons.Material.Filled.FitnessCenter">Músculos</MudNavLink>
+    </PermissionView>
+
+    <PermissionView Permission="healthcatalog.write">
+        <MudNavLink Href="/admin/health-catalog" Icon="@Icons.Material.Filled.MedicalServices">Catálogo de saúde</MudNavLink>
+    </PermissionView>
+
+    <MudDivider Class="my-2" />
     <MudText Class="px-4 py-2" Typo="Typo.overline">Administração</MudText>
 
     <PermissionView Permission="users.read">

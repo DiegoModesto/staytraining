@@ -1,21 +1,32 @@
-using Domain.Students;
+using Domain.Profiles;
 
 namespace Application.Students;
 
 public sealed record StudentListItemResponse(Guid Id, Guid UserId, string FullName, string? Email);
 
-public sealed record HealthObservationResponse(
+public sealed record HealthApportmentResponse(
     Guid Id,
-    HealthObservationKind Kind,
-    string Title,
-    string? Detail,
+    Guid BodyPartId,
+    string BodyPartName,
+    Guid ProblemTypeId,
+    string ProblemTypeName,
+    string? Observation,
     DateTimeOffset CreatedAt);
 
 public sealed record StudentNoteResponse(
     Guid Id,
+    Guid? WorkoutId,
     Guid AuthorUserId,
     string AuthorName,
     string Content,
+    DateTimeOffset CreatedAt);
+
+public sealed record StudentEditLogResponse(
+    Guid Id,
+    Guid EditorUserId,
+    string EditorName,
+    string Action,
+    string Detail,
     DateTimeOffset CreatedAt);
 
 public sealed record StudentDetailResponse(
@@ -25,4 +36,10 @@ public sealed record StudentDetailResponse(
     string? Email,
     DateOnly? BirthDate,
     string? Goals,
-    IReadOnlyCollection<HealthObservationResponse> HealthObservations);
+    string? Phone,
+    string? EmergencyPhone,
+    BloodType BloodType,
+    int? HeightCm,
+    decimal? WeightKg,
+    string? PhotoUrl,
+    IReadOnlyCollection<HealthApportmentResponse> HealthApportments);

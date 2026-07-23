@@ -28,7 +28,8 @@ public sealed class GetWorkoutByIdQueryHandler(
                 w.SourceTemplateId,
                 w.Name,
                 w.Description,
-                w.Category,
+                w.ModalityId,
+                w.Modality != null ? w.Modality.Name : null,
                 w.Items
                     .OrderBy(i => i.Order)
                     .Select(i => new WorkoutItemResponse(

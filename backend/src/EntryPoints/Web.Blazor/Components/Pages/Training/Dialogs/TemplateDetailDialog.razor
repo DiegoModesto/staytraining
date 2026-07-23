@@ -1,6 +1,7 @@
 @using Web.Blazor.Training
 @inject ITrainingApiClient Api
 @inject ISnackbar Snackbar
+@inject ModalityCatalog Catalog
 
 <MudDialog>
     <DialogContent>
@@ -12,10 +13,13 @@
         else
         {
             <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
-                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="st-cat-chip"
-                         Style="@($"color:{CategoryDisplay.Color(_template.Category)};border-color:{CategoryDisplay.Color(_template.Category)}")">
-                    @CategoryDisplay.Label(_template.Category)
-                </MudChip>
+                @if (_template.ModalityId is not null)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="st-cat-chip"
+                             Style="@($"color:{CategoryDisplay.Color(_modality)};border-color:{CategoryDisplay.Color(_modality)}")">
+                        @CategoryDisplay.Label(_modality)
+                    </MudChip>
+                }
                 <MudText Typo="Typo.body2">@_template.Items.Count exercício(s)</MudText>
             </MudStack>
             @if (!string.IsNullOrWhiteSpace(_template.CreatorNotes))
@@ -46,6 +50,7 @@
     [Parameter] public Guid TemplateId { get; set; }
 
     private WorkoutTemplateDetailDto? _template;
+    private ModalityDto? _modality;
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
@@ -53,6 +58,7 @@
         try
         {
             _template = await Api.GetTemplateAsync(TemplateId, CancellationToken.None);
+            _modality = await Catalog.GetAsync(_template?.ModalityId, CancellationToken.None);
         }
         catch (Exception ex)
         {

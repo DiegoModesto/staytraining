@@ -1,5 +1,4 @@
 using Application.Abstractions.Messaging;
-using Domain.Exercises;
 
 namespace Application.Workouts.Workouts.Create;
 
@@ -8,6 +7,6 @@ public sealed record CreateWorkoutCommand(
     Guid OwnerStudentId,
     string Name,
     string? Description,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
     IReadOnlyCollection<WorkoutItemInput> Items)
     : ICommand<Guid>;

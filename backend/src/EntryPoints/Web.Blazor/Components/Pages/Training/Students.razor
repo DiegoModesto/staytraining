@@ -1,6 +1,7 @@
 @page "/students"
 @attribute [Authorize]
 @using Web.Blazor.Training
+@using Web.Blazor.Components.Shared
 @inject ITrainingApiClient Api
 @inject IDialogService DialogService
 @inject NavigationManager Nav
@@ -18,7 +19,8 @@
         </PermissionView>
     </MudStack>
 
-    <MudTable Items="_students" Hover Loading="_loading" Dense Breakpoint="Breakpoint.Sm">
+    <MudTable Items="_students" Hover Loading="_loading" Dense Breakpoint="Breakpoint.Sm"
+              T="StudentListItemDto" OnRowClick="OnRowClick" Style="cursor:pointer">
         <HeaderContent>
             <MudTh>Nome</MudTh>
             <MudTh>E-mail</MudTh>
@@ -39,8 +41,17 @@
 @code {
     private IReadOnlyList<StudentListItemDto> _students = [];
     private bool _loading = true;
+    private readonly DoubleClickDetector _dbl = new();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private void OnRowClick(TableRowClickEventArgs<StudentListItemDto> args)
+    {
+        if (args.Item is not null && _dbl.IsDoubleClick(args.Item))
+        {
+            Nav.NavigateTo($"/students/{args.Item.Id}");
+        }
+    }
 
     private async Task LoadAsync()
     {

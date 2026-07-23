@@ -22,7 +22,7 @@ public sealed class ListStudentNotesQueryHandler(
             .Where(n => dbContext.StudentProfiles.Any(s =>
                 s.Id == n.StudentProfileId && !s.IsDeleted && (tenantId == null || s.TenantId == tenantId)))
             .OrderByDescending(n => n.CreatedAt)
-            .Select(n => new StudentNoteResponse(n.Id, n.AuthorUserId, n.AuthorName, n.Content, n.CreatedAt))
+            .Select(n => new StudentNoteResponse(n.Id, n.WorkoutId, n.AuthorUserId, n.AuthorName, n.Content, n.CreatedAt))
             .ToListAsync(cancellationToken);
 
         return notes;

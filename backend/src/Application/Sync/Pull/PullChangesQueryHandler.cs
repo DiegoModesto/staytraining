@@ -37,6 +37,7 @@ public sealed class PullChangesQueryHandler(
         List<Exercise> exercises = await dbContext.Exercises
             .IgnoreQueryFilters()
             .Include(e => e.Media)
+            .Include(e => e.Modality)
             .Where(e => e.TenantId == tenantId && e.UpdatedAt > since)
             .ToListAsync(cancellationToken);
 
@@ -44,6 +45,7 @@ public sealed class PullChangesQueryHandler(
         List<WorkoutTemplate> templates = await dbContext.WorkoutTemplates
             .IgnoreQueryFilters()
             .Include(t => t.Items)
+            .Include(t => t.Modality)
             .Where(t => t.TenantId == tenantId && t.UpdatedAt > since)
             .ToListAsync(cancellationToken);
 
@@ -51,6 +53,7 @@ public sealed class PullChangesQueryHandler(
         List<Workout> workouts = await dbContext.Workouts
             .IgnoreQueryFilters()
             .Include(w => w.Items)
+            .Include(w => w.Modality)
             .Where(w => w.TenantId == tenantId && w.OwnerStudentId == studentId && w.UpdatedAt > since)
             .ToListAsync(cancellationToken);
 
@@ -80,20 +83,21 @@ public sealed class PullChangesQueryHandler(
     }
 
     private static ExerciseResponse MapExercise(Exercise e) => new(
-        e.Id, e.Name, e.Description, e.Category, e.PrimaryMuscleGroupId, e.SecondaryMuscleGroupIds,
+        e.Id, e.Name, e.Description, e.ModalityId, e.Modality?.Name ?? string.Empty,
+        e.PrimaryMuscleGroupId, e.SecondaryMuscleGroupIds,
         e.UsageExample, e.DefaultSets, e.DefaultReps, e.DefaultRestSeconds, e.IsAerobic,
         e.DefaultWorkSeconds, e.DefaultIntervalRestSeconds, e.DefaultRounds,
         e.Media.Select(m => new ExerciseMediaResponse(
             m.Id, m.Kind, m.StorageKey, m.Url, m.ContentType, m.SizeBytes)).ToList());
 
     private static WorkoutTemplateResponse MapTemplate(WorkoutTemplate t) => new(
-        t.Id, t.Name, t.Description, t.Category, t.IsSystemDefault, t.CreatorNotes,
+        t.Id, t.Name, t.Description, t.ModalityId, t.Modality?.Name, t.IsSystemDefault, t.CreatorNotes,
         t.Items.OrderBy(i => i.Order).Select(i => new TemplateItemResponse(
             i.Id, i.ExerciseId, i.Order, i.SectionLabel, i.Sets, i.Reps, i.RestSeconds,
             i.DurationSeconds, i.WorkSeconds, i.IntervalRestSeconds, i.Rounds, i.CreatorNotes)).ToList());
 
     private static WorkoutResponse MapWorkout(Workout w) => new(
-        w.Id, w.OwnerStudentId, w.SourceTemplateId, w.Name, w.Description, w.Category,
+        w.Id, w.OwnerStudentId, w.SourceTemplateId, w.Name, w.Description, w.ModalityId, w.Modality?.Name,
         w.Items.OrderBy(i => i.Order).Select(i => new WorkoutItemResponse(
             i.Id, i.ExerciseId, i.Order, i.SectionLabel, i.Sets, i.Reps, i.RestSeconds,
             i.DurationSeconds, i.WorkSeconds, i.IntervalRestSeconds, i.Rounds, i.ProfessorComment)).ToList());

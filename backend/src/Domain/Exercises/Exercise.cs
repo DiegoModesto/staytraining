@@ -1,3 +1,4 @@
+using Domain.Modalities;
 using SharedKernel;
 
 namespace Domain.Exercises;
@@ -14,7 +15,10 @@ public sealed class Exercise : Entity, IHasUpdatedAt
 
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public ExerciseCategory Category { get; set; }
+
+    /// <summary>Foreign key to the <see cref="Modalities.Modality"/> this exercise belongs to.</summary>
+    public Guid ModalityId { get; set; }
+    public Modality? Modality { get; set; }
 
     /// <summary>Primary muscle group affected.</summary>
     public Guid PrimaryMuscleGroupId { get; set; }

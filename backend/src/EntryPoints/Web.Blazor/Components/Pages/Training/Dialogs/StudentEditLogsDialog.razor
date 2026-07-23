@@ -1,0 +1,58 @@
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate />
+        }
+        else if (_logs.Count == 0)
+        {
+            <MudText Typo="Typo.body2">Nenhuma edição administrativa registrada.</MudText>
+        }
+        else
+        {
+            <MudList T="StudentEditLogDto" Dense>
+                @foreach (var l in _logs)
+                {
+                    <MudListItem T="StudentEditLogDto" Icon="@Icons.Material.Filled.History">
+                        <MudText Typo="Typo.body2">@l.Detail</MudText>
+                        <MudText Typo="Typo.caption">
+                            @l.EditorName · @l.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                        </MudText>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialog.Close())">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public Guid StudentProfileId { get; set; }
+
+    private IReadOnlyList<StudentEditLogDto> _logs = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _logs = await Api.ListStudentEditLogsAsync(StudentProfileId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar histórico: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

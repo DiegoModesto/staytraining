@@ -20,7 +20,11 @@ internal sealed class WorkoutConfiguration : AbstractConfiguration<Workout>
 
         builder.Property(e => e.Name).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(2000);
-        builder.Property(e => e.Category).HasConversion<string>().HasMaxLength(30);
+
+        builder.HasOne(e => e.Modality)
+            .WithMany()
+            .HasForeignKey(e => e.ModalityId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(e => e.Items)
             .WithOne()

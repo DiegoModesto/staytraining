@@ -6,6 +6,7 @@ import '../../features/execution/session_screen.dart';
 import '../../features/exercises/exercise_detail_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/notes/notes_screen.dart';
+import '../../features/profile/profile_screen.dart';
 import '../../features/reports/weekly_report_screen.dart';
 import '../../features/workouts/workout_detail_screen.dart';
 import '../../features/workouts/workouts_screen.dart';
@@ -42,6 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/notes', builder: (c, s) => const NotesScreen()),
       GoRoute(path: '/reports', builder: (c, s) => const WeeklyReportScreen()),
+      GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
     ],
   );
 });

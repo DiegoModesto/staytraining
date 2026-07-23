@@ -262,12 +262,6 @@ namespace Infra.Database.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("category");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -313,6 +307,10 @@ namespace Infra.Database.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
+                    b.Property<Guid>("ModalityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modality_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -344,11 +342,14 @@ namespace Infra.Database.Migrations
                     b.HasKey("Id")
                         .HasName("pk_exercises");
 
-                    b.HasIndex("TenantId", "Category")
-                        .HasDatabaseName("ix_exercises_tenant_id_category");
+                    b.HasIndex("ModalityId")
+                        .HasDatabaseName("ix_exercises_modality_id");
 
                     b.HasIndex("TenantId", "Id")
                         .HasDatabaseName("ix_exercises_tenant_id_id");
+
+                    b.HasIndex("TenantId", "ModalityId")
+                        .HasDatabaseName("ix_exercises_tenant_id_modality_id");
 
                     b.ToTable("exercises", "public");
                 });
@@ -398,6 +399,149 @@ namespace Infra.Database.Migrations
                     b.ToTable("exercise_media", "public");
                 });
 
+            modelBuilder.Entity("Domain.HealthCatalog.BodyPart", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_body_parts");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_body_parts_name");
+
+                    b.ToTable("body_parts", "public");
+                });
+
+            modelBuilder.Entity("Domain.HealthCatalog.ProblemType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BodyPartId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("body_part_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_problem_types");
+
+                    b.HasIndex("BodyPartId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_problem_types_body_part_id_name");
+
+                    b.ToTable("problem_types", "public");
+                });
+
+            modelBuilder.Entity("Domain.Modalities.Modality", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ColorHex")
+                        .IsRequired()
+                        .HasMaxLength(9)
+                        .HasColumnType("character varying(9)")
+                        .HasColumnName("color_hex");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsIntervalBased")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_interval_based");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_modalities");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_modalities_name");
+
+                    b.ToTable("modalities", "public");
+                });
+
             modelBuilder.Entity("Domain.MuscleGroups.MuscleGroup", b =>
                 {
                     b.Property<Guid>("Id")
@@ -440,6 +584,84 @@ namespace Infra.Database.Migrations
                         .HasDatabaseName("ix_muscle_groups_name");
 
                     b.ToTable("muscle_groups", "public");
+                });
+
+            modelBuilder.Entity("Domain.Profiles.UserProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BloodType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("blood_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<int?>("HeightCm")
+                        .HasColumnType("integer")
+                        .HasColumnName("height_cm");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("PhotoKey")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("photo_key");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<decimal?>("WeightKg")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("weight_kg");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_profiles");
+
+                    b.HasIndex("TenantId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_profiles_tenant_id_user_id");
+
+                    b.ToTable("user_profiles", "public");
                 });
 
             modelBuilder.Entity("Domain.SampleEntities.SampleEntity", b =>
@@ -485,45 +707,99 @@ namespace Infra.Database.Migrations
                     b.ToTable("sample_entities", "public");
                 });
 
-            modelBuilder.Entity("Domain.Students.HealthObservation", b =>
+            modelBuilder.Entity("Domain.Students.HealthApportment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid>("BodyPartId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("body_part_id");
+
+                    b.Property<string>("BodyPartName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("body_part_name");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("Detail")
+                    b.Property<string>("Observation")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)")
-                        .HasColumnName("detail");
+                        .HasColumnName("observation");
 
-                    b.Property<string>("Kind")
+                    b.Property<Guid>("ProblemTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("problem_type_id");
+
+                    b.Property<string>("ProblemTypeName")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("kind");
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("problem_type_name");
 
                     b.Property<Guid>("StudentProfileId")
                         .HasColumnType("uuid")
                         .HasColumnName("student_profile_id");
 
-                    b.Property<string>("Title")
+                    b.HasKey("Id")
+                        .HasName("pk_health_apportments");
+
+                    b.HasIndex("StudentProfileId")
+                        .HasDatabaseName("ix_health_apportments_student_profile_id");
+
+                    b.ToTable("health_apportments", "public");
+                });
+
+            modelBuilder.Entity("Domain.Students.StudentEditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("action");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("detail");
+
+                    b.Property<string>("EditorName")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
-                        .HasColumnName("title");
+                        .HasColumnName("editor_name");
+
+                    b.Property<Guid>("EditorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("editor_user_id");
+
+                    b.Property<Guid>("StudentProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_profile_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_health_observations");
+                        .HasName("pk_student_edit_logs");
 
                     b.HasIndex("StudentProfileId")
-                        .HasDatabaseName("ix_health_observations_student_profile_id");
+                        .HasDatabaseName("ix_student_edit_logs_student_profile_id");
 
-                    b.ToTable("health_observations", "public");
+                    b.ToTable("student_edit_logs", "public");
                 });
 
             modelBuilder.Entity("Domain.Students.StudentNote", b =>
@@ -557,11 +833,18 @@ namespace Infra.Database.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("student_profile_id");
 
+                    b.Property<Guid?>("WorkoutId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workout_id");
+
                     b.HasKey("Id")
                         .HasName("pk_student_notes");
 
                     b.HasIndex("StudentProfileId")
                         .HasDatabaseName("ix_student_notes_student_profile_id");
+
+                    b.HasIndex("StudentProfileId", "WorkoutId")
+                        .HasDatabaseName("ix_student_notes_student_profile_id_workout_id");
 
                     b.ToTable("student_notes", "public");
                 });
@@ -577,6 +860,12 @@ namespace Infra.Database.Migrations
                         .HasColumnType("date")
                         .HasColumnName("birth_date");
 
+                    b.Property<string>("BloodType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("blood_type");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -590,6 +879,11 @@ namespace Infra.Database.Migrations
                         .HasColumnType("character varying(320)")
                         .HasColumnName("email");
 
+                    b.Property<string>("EmergencyPhone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("emergency_phone");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -601,9 +895,23 @@ namespace Infra.Database.Migrations
                         .HasColumnType("character varying(4000)")
                         .HasColumnName("goals");
 
+                    b.Property<int?>("HeightCm")
+                        .HasColumnType("integer")
+                        .HasColumnName("height_cm");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("PhotoKey")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("photo_key");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -616,6 +924,11 @@ namespace Infra.Database.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
+
+                    b.Property<decimal?>("WeightKg")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("weight_kg");
 
                     b.HasKey("Id")
                         .HasName("pk_student_profiles");
@@ -700,11 +1013,6 @@ namespace Infra.Database.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("Category")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("category");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -721,6 +1029,10 @@ namespace Infra.Database.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModalityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modality_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -746,6 +1058,9 @@ namespace Infra.Database.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_workouts");
+
+                    b.HasIndex("ModalityId")
+                        .HasDatabaseName("ix_workouts_modality_id");
 
                     b.HasIndex("TenantId", "OwnerStudentId")
                         .HasDatabaseName("ix_workouts_tenant_id_owner_student_id");
@@ -826,11 +1141,6 @@ namespace Infra.Database.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("Category")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("category");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -857,6 +1167,10 @@ namespace Infra.Database.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_system_default");
 
+                    b.Property<Guid?>("ModalityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modality_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -874,6 +1188,9 @@ namespace Infra.Database.Migrations
                     b.HasKey("Id")
                         .HasName("pk_workout_templates");
 
+                    b.HasIndex("ModalityId")
+                        .HasDatabaseName("ix_workout_templates_modality_id");
+
                     b.HasIndex("TenantId", "IsSystemDefault")
                         .HasDatabaseName("ix_workout_templates_tenant_id_is_system_default");
 
@@ -890,6 +1207,18 @@ namespace Infra.Database.Migrations
                         .HasConstraintName("fk_exercise_notes_workout_sessions_workout_session_id");
                 });
 
+            modelBuilder.Entity("Domain.Exercises.Exercise", b =>
+                {
+                    b.HasOne("Domain.Modalities.Modality", "Modality")
+                        .WithMany()
+                        .HasForeignKey("ModalityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_exercises_modalities_modality_id");
+
+                    b.Navigation("Modality");
+                });
+
             modelBuilder.Entity("Domain.Exercises.ExerciseMedia", b =>
                 {
                     b.HasOne("Domain.Exercises.Exercise", null)
@@ -900,14 +1229,34 @@ namespace Infra.Database.Migrations
                         .HasConstraintName("fk_exercise_media_exercises_exercise_id");
                 });
 
-            modelBuilder.Entity("Domain.Students.HealthObservation", b =>
+            modelBuilder.Entity("Domain.HealthCatalog.ProblemType", b =>
+                {
+                    b.HasOne("Domain.HealthCatalog.BodyPart", null)
+                        .WithMany("ProblemTypes")
+                        .HasForeignKey("BodyPartId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_problem_types_body_parts_body_part_id");
+                });
+
+            modelBuilder.Entity("Domain.Students.HealthApportment", b =>
                 {
                     b.HasOne("Domain.Students.StudentProfile", null)
-                        .WithMany("HealthObservations")
+                        .WithMany("HealthApportments")
                         .HasForeignKey("StudentProfileId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_health_observations_student_profiles_student_profile_id");
+                        .HasConstraintName("fk_health_apportments_student_profiles_student_profile_id");
+                });
+
+            modelBuilder.Entity("Domain.Students.StudentEditLog", b =>
+                {
+                    b.HasOne("Domain.Students.StudentProfile", null)
+                        .WithMany("EditLogs")
+                        .HasForeignKey("StudentProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_student_edit_logs_student_profiles_student_profile_id");
                 });
 
             modelBuilder.Entity("Domain.Students.StudentNote", b =>
@@ -930,6 +1279,17 @@ namespace Infra.Database.Migrations
                         .HasConstraintName("fk_template_items_workout_templates_workout_template_id");
                 });
 
+            modelBuilder.Entity("Domain.Workouts.Workout", b =>
+                {
+                    b.HasOne("Domain.Modalities.Modality", "Modality")
+                        .WithMany()
+                        .HasForeignKey("ModalityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_workouts_modalities_modality_id");
+
+                    b.Navigation("Modality");
+                });
+
             modelBuilder.Entity("Domain.Workouts.WorkoutItem", b =>
                 {
                     b.HasOne("Domain.Workouts.Workout", null)
@@ -938,6 +1298,17 @@ namespace Infra.Database.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_workout_items_workouts_workout_id");
+                });
+
+            modelBuilder.Entity("Domain.Workouts.WorkoutTemplate", b =>
+                {
+                    b.HasOne("Domain.Modalities.Modality", "Modality")
+                        .WithMany()
+                        .HasForeignKey("ModalityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_workout_templates_modalities_modality_id");
+
+                    b.Navigation("Modality");
                 });
 
             modelBuilder.Entity("Domain.Execution.WorkoutSession", b =>
@@ -950,9 +1321,16 @@ namespace Infra.Database.Migrations
                     b.Navigation("Media");
                 });
 
+            modelBuilder.Entity("Domain.HealthCatalog.BodyPart", b =>
+                {
+                    b.Navigation("ProblemTypes");
+                });
+
             modelBuilder.Entity("Domain.Students.StudentProfile", b =>
                 {
-                    b.Navigation("HealthObservations");
+                    b.Navigation("EditLogs");
+
+                    b.Navigation("HealthApportments");
 
                     b.Navigation("Notes");
                 });

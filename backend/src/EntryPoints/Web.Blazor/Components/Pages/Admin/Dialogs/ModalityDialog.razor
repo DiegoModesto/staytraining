@@ -1,0 +1,57 @@
+@using Web.Blazor.Training
+@using MudBlazor.Utilities
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_name" Label="Nome" Required Immediate MaxLength="60" Class="mb-3" />
+
+        <MudColorPicker @bind-Value="_color" Label="Cor" ColorPickerMode="ColorPickerMode.HEX"
+                        ShowAlpha="false" DisableToolbar="false" Class="mb-3"
+                        Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Palette" />
+
+        <MudSwitch @bind-Value="_isIntervalBased" Color="Color.Primary"
+                   Label="Baseada em intervalos (rounds trabalho/descanso, ex.: Boxe/Aeróbico)" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialog.Cancel())">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    /// <summary>Existing modality to edit; null to create a new one.</summary>
+    [Parameter] public ModalityDto? Modality { get; set; }
+
+    private string _name = string.Empty;
+    private MudColor _color = "#4EA8FF";
+    private bool _isIntervalBased;
+    private bool _busy;
+
+    protected override void OnInitialized()
+    {
+        if (Modality is not null)
+        {
+            _name = Modality.Name;
+            _color = Modality.ColorHex;
+            _isIntervalBased = Modality.IsIntervalBased;
+        }
+    }
+
+    private void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            return;
+        }
+
+        _busy = true;
+        // MudColor.ToString(Hex) yields "#rrggbb"; keep the existing sort order (order is no longer edited here).
+        string hex = _color.ToString(MudColorOutputFormats.Hex);
+        Dialog.Close(DialogResult.Ok(new Result(_name.Trim(), hex, _isIntervalBased)));
+    }
+
+    /// <summary>Values entered in the dialog; the page turns this into a create/update request.</summary>
+    public sealed record Result(string Name, string ColorHex, bool IsIntervalBased);
+}

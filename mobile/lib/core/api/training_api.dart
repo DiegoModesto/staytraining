@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/models.dart';
@@ -16,9 +17,9 @@ class TrainingApi {
     return (r.data as List).map((e) => MuscleGroup.fromJson(e)).toList();
   }
 
-  Future<List<Exercise>> listExercises({ExerciseCategory? category}) async {
+  Future<List<Exercise>> listExercises({String? modalityId}) async {
     final r = await _client.dio.get('/api/v1/exercises',
-        queryParameters: category == null ? null : {'category': category.index});
+        queryParameters: modalityId == null ? null : {'modalityId': modalityId});
     return (r.data as List).map((e) => Exercise.fromJson(e)).toList();
   }
 
@@ -117,4 +118,50 @@ class TrainingApi {
 
   Future<void> registerDeviceToken(String token, int platform) =>
       _client.dio.post('/api/v1/devices/token', data: {'token': token, 'platform': platform});
+
+  // ----- Profile / ficha (current user) -----
+  Future<Profile> getMyProfile() async {
+    final r = await _client.dio.get('/api/v1/profiles/me');
+    return Profile.fromJson(r.data as Map<String, dynamic>);
+  }
+
+  Future<void> updateMyProfile({
+    required String fullName,
+    required String email,
+    String? phone,
+    String? emergencyPhone,
+    required BloodType bloodType,
+    int? heightCm,
+    double? weightKg,
+  }) =>
+      _client.dio.put('/api/v1/profiles/me', data: {
+        'fullName': fullName,
+        'email': email,
+        'phone': phone,
+        'emergencyPhone': emergencyPhone,
+        'bloodType': bloodType.index,
+        'heightCm': heightCm,
+        'weightKg': weightKg,
+      });
+
+  /// Uploads an already cropped/resized image (bytes). Returns the presigned photo URL.
+  Future<String> uploadMyPhoto(List<int> bytes, String fileName, String contentType) async {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: fileName, contentType: DioMediaType.parse(contentType)),
+    });
+    final r = await _client.dio.post('/api/v1/profiles/me/photo', data: form);
+    return (r.data as Map<String, dynamic>)['photoUrl'] as String;
+  }
+
+  Future<List<CatalogBodyPart>> listHealthCatalog() async {
+    final r = await _client.dio.get('/api/v1/health-catalog');
+    return (r.data as List).map((e) => CatalogBodyPart.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> addMyApportment(String bodyPartId, String problemTypeId, String? observation) =>
+      _client.dio.post('/api/v1/profiles/me/apportments',
+          data: {'bodyPartId': bodyPartId, 'problemTypeId': problemTypeId, 'observation': observation});
+
+  Future<void> removeMyApportment(String apportmentId) =>
+      _client.dio.delete('/api/v1/profiles/me/apportments/$apportmentId');
 }

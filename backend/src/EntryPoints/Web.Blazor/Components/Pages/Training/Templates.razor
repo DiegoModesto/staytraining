@@ -1,10 +1,12 @@
 @page "/templates"
 @attribute [Authorize]
 @using Web.Blazor.Training
+@using Web.Blazor.Components.Shared
 @inject ITrainingApiClient Api
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject ModalityCatalog Catalog
 
 <PageTitle>Modelos de treino</PageTitle>
 
@@ -30,8 +32,8 @@
             <MudTd DataLabel="Nome">@context.Name</MudTd>
             <MudTd DataLabel="Modalidade">
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="st-cat-chip"
-                         Style="@($"color:{CategoryDisplay.Color(context.Category)};border-color:{CategoryDisplay.Color(context.Category)}")">
-                    @CategoryDisplay.Label(context.Category)
+                         Style="@($"color:{CategoryDisplay.Color(Mod(context.ModalityId))};border-color:{CategoryDisplay.Color(Mod(context.ModalityId))}")">
+                    @CategoryDisplay.Label(Mod(context.ModalityId))
                 </MudChip>
             </MudTd>
             <MudTd DataLabel="Exercícios">@context.ItemCount</MudTd>
@@ -48,12 +50,17 @@
 
 @code {
     private IReadOnlyList<WorkoutTemplateListItemDto> _templates = [];
+    private IReadOnlyDictionary<Guid, ModalityDto> _mods = new Dictionary<Guid, ModalityDto>();
     private bool _loading = true;
+    private readonly DoubleClickDetector _dbl = new();
+
+    private ModalityDto? Mod(Guid? id) => id is Guid g ? _mods.GetValueOrDefault(g) : null;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            _mods = (await Catalog.AllAsync(CancellationToken.None)).ToDictionary(m => m.Id);
             _templates = await Api.ListTemplatesAsync(null, CancellationToken.None);
         }
         catch (Exception ex)
@@ -68,7 +75,7 @@
 
     private async Task OnRowClick(TableRowClickEventArgs<WorkoutTemplateListItemDto> args)
     {
-        if (args.Item is null)
+        if (args.Item is null || !_dbl.IsDoubleClick(args.Item))
         {
             return;
         }

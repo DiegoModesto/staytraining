@@ -19,6 +19,9 @@
     [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
     [Parameter] public Guid StudentProfileId { get; set; }
 
+    /// <summary>When set, the note is scoped to this workout (Treinos tab); null = general (Ficha tab).</summary>
+    [Parameter] public Guid? WorkoutId { get; set; }
+
     private string _content = string.Empty;
     private bool _busy;
 
@@ -35,7 +38,7 @@
         _busy = true;
         try
         {
-            await Api.AddStudentNoteAsync(StudentProfileId, new AddStudentNoteRequest(_content), CancellationToken.None);
+            await Api.AddStudentNoteAsync(StudentProfileId, new AddStudentNoteRequest(_content, WorkoutId), CancellationToken.None);
             Snackbar.Add("Anotação adicionada.", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }

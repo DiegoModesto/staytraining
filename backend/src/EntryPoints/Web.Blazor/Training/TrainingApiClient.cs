@@ -20,15 +20,58 @@ internal sealed class TrainingApiClient(
 {
     private const string Base = "/api/v1";
 
+    public Task<ProfileDto?> GetMyProfileAsync(CancellationToken ct)
+        => GetOrNullAsync<ProfileDto>($"{Base}/profiles/me", ct);
+
+    public Task UpdateMyProfileAsync(UpdateProfileRequest request, CancellationToken ct)
+        => SendWithBodyAsync(HttpMethod.Put, $"{Base}/profiles/me", request, ct);
+
+    public async Task<UploadPhotoResponse> UploadMyProfilePhotoAsync(
+        byte[] bytes, string fileName, string contentType, CancellationToken ct)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(bytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(fileContent, "file", fileName);
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"{Base}/profiles/me/photo") { Content = content };
+        await AuthorizeAsync(req, ct);
+        using HttpResponseMessage resp = await httpClient.SendAsync(req, ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<UploadPhotoResponse>(ct)
+            ?? throw new InvalidOperationException("Empty response from photo upload.");
+    }
+
     public Task<IReadOnlyList<MuscleGroupDto>> ListMuscleGroupsAsync(CancellationToken ct)
         => GetListAsync<MuscleGroupDto>($"{Base}/muscle-groups", ct);
 
-    public Task<IReadOnlyList<ExerciseListItemDto>> ListExercisesAsync(ExerciseCategory? category, CancellationToken ct)
+    public async Task<Guid> CreateMuscleGroupAsync(CreateMuscleGroupRequest request, CancellationToken ct)
+        => (await PostAsync<CreateMuscleGroupRequest, IdResponse>($"{Base}/muscle-groups", request, ct)).Id;
+
+    public Task UpdateMuscleGroupAsync(Guid id, UpdateMuscleGroupRequest request, CancellationToken ct)
+        => SendWithBodyAsync(HttpMethod.Put, $"{Base}/muscle-groups/{id}", request, ct);
+
+    public Task DeleteMuscleGroupAsync(Guid id, CancellationToken ct)
+        => SendNoBodyAsync(HttpMethod.Delete, $"{Base}/muscle-groups/{id}", ct);
+
+    public Task<IReadOnlyList<ModalityDto>> ListModalitiesAsync(CancellationToken ct)
+        => GetListAsync<ModalityDto>($"{Base}/modalities", ct);
+
+    public async Task<Guid> CreateModalityAsync(CreateModalityRequest request, CancellationToken ct)
+        => (await PostAsync<CreateModalityRequest, IdResponse>($"{Base}/modalities", request, ct)).Id;
+
+    public Task UpdateModalityAsync(Guid id, UpdateModalityRequest request, CancellationToken ct)
+        => SendWithBodyAsync(HttpMethod.Put, $"{Base}/modalities/{id}", request, ct);
+
+    public Task DeleteModalityAsync(Guid id, CancellationToken ct)
+        => SendNoBodyAsync(HttpMethod.Delete, $"{Base}/modalities/{id}", ct);
+
+    public Task<IReadOnlyList<ExerciseListItemDto>> ListExercisesAsync(Guid? modalityId, CancellationToken ct)
     {
         string path = $"{Base}/exercises";
-        if (category is not null)
+        if (modalityId is not null)
         {
-            path += $"?category={(int)category}";
+            path += $"?modalityId={modalityId}";
         }
 
         return GetListAsync<ExerciseListItemDto>(path, ct);
@@ -57,8 +100,44 @@ internal sealed class TrainingApiClient(
     public async Task<Guid> RegisterStudentAsync(RegisterStudentRequest request, CancellationToken ct)
         => (await PostAsync<RegisterStudentRequest, IdResponse>($"{Base}/students", request, ct)).Id;
 
-    public async Task<Guid> AddHealthObservationAsync(Guid studentId, AddHealthObservationRequest request, CancellationToken ct)
-        => (await PostAsync<AddHealthObservationRequest, IdResponse>($"{Base}/students/{studentId}/health", request, ct)).Id;
+    public Task UpdateStudentFichaAsync(Guid studentId, UpdateStudentFichaRequest request, CancellationToken ct)
+        => SendWithBodyAsync(HttpMethod.Put, $"{Base}/students/{studentId}/ficha", request, ct);
+
+    public async Task<Guid> AddStudentApportmentAsync(Guid studentId, AddApportmentRequest request, CancellationToken ct)
+        => (await PostAsync<AddApportmentRequest, IdResponse>($"{Base}/students/{studentId}/apportments", request, ct)).Id;
+
+    public Task RemoveStudentApportmentAsync(Guid studentId, Guid apportmentId, CancellationToken ct)
+        => SendNoBodyAsync(HttpMethod.Delete, $"{Base}/students/{studentId}/apportments/{apportmentId}", ct);
+
+    public Task<IReadOnlyList<StudentEditLogDto>> ListStudentEditLogsAsync(Guid studentId, CancellationToken ct)
+        => GetListAsync<StudentEditLogDto>($"{Base}/students/{studentId}/edit-logs", ct);
+
+    public async Task<Guid> AddMyApportmentAsync(AddApportmentRequest request, CancellationToken ct)
+        => (await PostAsync<AddApportmentRequest, IdResponse>($"{Base}/profiles/me/apportments", request, ct)).Id;
+
+    public Task RemoveMyApportmentAsync(Guid apportmentId, CancellationToken ct)
+        => SendNoBodyAsync(HttpMethod.Delete, $"{Base}/profiles/me/apportments/{apportmentId}", ct);
+
+    public Task<IReadOnlyList<BodyPartDto>> ListHealthCatalogAsync(CancellationToken ct)
+        => GetListAsync<BodyPartDto>($"{Base}/health-catalog", ct);
+
+    public async Task<Guid> CreateBodyPartAsync(CatalogNameRequest request, CancellationToken ct)
+        => (await PostAsync<CatalogNameRequest, IdResponse>($"{Base}/health-catalog/body-parts", request, ct)).Id;
+
+    public Task UpdateBodyPartAsync(Guid id, CatalogNameRequest request, CancellationToken ct)
+        => SendWithBodyAsync(HttpMethod.Put, $"{Base}/health-catalog/body-parts/{id}", request, ct);
+
+    public Task DeleteBodyPartAsync(Guid id, CancellationToken ct)
+        => SendNoBodyAsync(HttpMethod.Delete, $"{Base}/health-catalog/body-parts/{id}", ct);
+
+    public async Task<Guid> CreateProblemTypeAsync(CreateProblemTypeRequest request, CancellationToken ct)
+        => (await PostAsync<CreateProblemTypeRequest, IdResponse>($"{Base}/health-catalog/problem-types", request, ct)).Id;
+
+    public Task UpdateProblemTypeAsync(Guid id, CatalogNameRequest request, CancellationToken ct)
+        => SendWithBodyAsync(HttpMethod.Put, $"{Base}/health-catalog/problem-types/{id}", request, ct);
+
+    public Task DeleteProblemTypeAsync(Guid id, CancellationToken ct)
+        => SendNoBodyAsync(HttpMethod.Delete, $"{Base}/health-catalog/problem-types/{id}", ct);
 
     public Task<IReadOnlyList<StudentNoteDto>> ListStudentNotesAsync(Guid studentId, CancellationToken ct)
         => GetListAsync<StudentNoteDto>($"{Base}/students/{studentId}/notes", ct);

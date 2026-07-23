@@ -1,0 +1,166 @@
+@page "/admin/health-catalog"
+@attribute [Authorize]
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Catálogo de saúde</PageTitle>
+
+<PermissionView Permission="healthcatalog.write">
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h4">Catálogo de saúde</MudText>
+        <MudSpacer />
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="AddBodyPart">Nova região do corpo</MudButton>
+    </MudStack>
+
+    <MudText Typo="Typo.body2" Class="mb-3" Style="color:var(--mud-palette-text-secondary)">
+        Local do corpo e tipos de problema usados nos apontamentos de saúde das fichas.
+    </MudText>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate />
+    }
+    else
+    {
+        <MudExpansionPanels MultiExpansion="true">
+            @foreach (var bp in _catalog)
+            {
+                <MudExpansionPanel>
+                    <TitleContent>
+                        <MudStack Row AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.subtitle1">@bp.Name</MudText>
+                            <MudChip T="string" Size="Size.Small">@bp.ProblemTypes.Count tipo(s)</MudChip>
+                            <MudSpacer />
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                           OnClick="@(() => RenameBodyPart(bp))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => DeleteBodyPart(bp))" />
+                        </MudStack>
+                    </TitleContent>
+                    <ChildContent>
+                        <MudList T="ProblemTypeDto" Dense>
+                            @foreach (var pt in bp.ProblemTypes)
+                            {
+                                <MudListItem T="ProblemTypeDto">
+                                    <MudStack Row AlignItems="AlignItems.Center">
+                                        <span>@pt.Name</span>
+                                        <MudSpacer />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                                       OnClick="@(() => RenameProblemType(pt))" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                       OnClick="@(() => DeleteProblemType(pt))" />
+                                    </MudStack>
+                                </MudListItem>
+                            }
+                        </MudList>
+                        <MudButton StartIcon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                   OnClick="@(() => AddProblemType(bp))">Novo tipo de problema</MudButton>
+                    </ChildContent>
+                </MudExpansionPanel>
+            }
+        </MudExpansionPanels>
+    }
+</PermissionView>
+
+@code {
+    private IReadOnlyList<BodyPartDto> _catalog = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _catalog = await Api.ListHealthCatalogAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar catálogo: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task<string?> PromptName(string label, string? initial = null)
+    {
+        var parameters = new DialogParameters<Dialogs.NameInputDialog>
+        {
+            { x => x.Label, label },
+            { x => x.Initial, initial },
+        };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.NameInputDialog>(label, parameters);
+        DialogResult? r = await dlg.Result;
+        return r is not null && !r.Canceled && r.Data is string s ? s : null;
+    }
+
+    private async Task Run(Func<Task> action, string errorPrefix)
+    {
+        try { await action(); await LoadAsync(); }
+        catch (Exception ex) { Snackbar.Add($"{errorPrefix}: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task AddBodyPart()
+    {
+        string? name = await PromptName("Nome da região do corpo");
+        if (name is not null)
+        {
+            await Run(() => Api.CreateBodyPartAsync(new CatalogNameRequest(name), CancellationToken.None), "Falha ao criar");
+        }
+    }
+
+    private async Task RenameBodyPart(BodyPartDto bp)
+    {
+        string? name = await PromptName("Renomear região", bp.Name);
+        if (name is not null)
+        {
+            await Run(() => Api.UpdateBodyPartAsync(bp.Id, new CatalogNameRequest(name), CancellationToken.None), "Falha ao renomear");
+        }
+    }
+
+    private async Task DeleteBodyPart(BodyPartDto bp)
+    {
+        bool? c = await DialogService.ShowMessageBox("Excluir região",
+            $"Excluir \"{bp.Name}\" e seus tipos? Não é possível se houver apontamentos usando-a.",
+            yesText: "Excluir", cancelText: "Cancelar");
+        if (c == true)
+        {
+            await Run(() => Api.DeleteBodyPartAsync(bp.Id, CancellationToken.None), "Falha ao excluir (em uso?)");
+        }
+    }
+
+    private async Task AddProblemType(BodyPartDto bp)
+    {
+        string? name = await PromptName($"Novo tipo em {bp.Name}");
+        if (name is not null)
+        {
+            await Run(() => Api.CreateProblemTypeAsync(new CreateProblemTypeRequest(bp.Id, name), CancellationToken.None), "Falha ao criar");
+        }
+    }
+
+    private async Task RenameProblemType(ProblemTypeDto pt)
+    {
+        string? name = await PromptName("Renomear tipo", pt.Name);
+        if (name is not null)
+        {
+            await Run(() => Api.UpdateProblemTypeAsync(pt.Id, new CatalogNameRequest(name), CancellationToken.None), "Falha ao renomear");
+        }
+    }
+
+    private async Task DeleteProblemType(ProblemTypeDto pt)
+    {
+        bool? c = await DialogService.ShowMessageBox("Excluir tipo",
+            $"Excluir \"{pt.Name}\"? Não é possível se houver apontamentos usando-o.",
+            yesText: "Excluir", cancelText: "Cancelar");
+        if (c == true)
+        {
+            await Run(() => Api.DeleteProblemTypeAsync(pt.Id, CancellationToken.None), "Falha ao excluir (em uso?)");
+        }
+    }
+}

@@ -1,3 +1,4 @@
+using Domain.Profiles;
 using SharedKernel;
 
 namespace Domain.Students;
@@ -19,11 +20,26 @@ public sealed class StudentProfile : Entity, IHasUpdatedAt
     public string? Email { get; set; }
     public DateOnly? BirthDate { get; set; }
 
+    // Personal data (the editable "ficha"). Required ones are enforced at the API/UI layer; kept
+    // nullable here so pre-existing rows remain valid until filled in.
+    public string? Phone { get; set; }
+    public string? EmergencyPhone { get; set; }
+    public BloodType BloodType { get; set; } = BloodType.Unknown;
+    public int? HeightCm { get; set; }
+    public decimal? WeightKg { get; set; }
+
+    /// <summary>MinIO object key of the profile photo (see IFileStorage); null when none.</summary>
+    public string? PhotoKey { get; set; }
+
     /// <summary>Training goals / general notes visible to the student.</summary>
     public string? Goals { get; set; }
 
-    public List<HealthObservation> HealthObservations { get; set; } = [];
+    /// <summary>Structured health notes (body part + problem type + observation).</summary>
+    public List<HealthApportment> HealthApportments { get; set; } = [];
 
     /// <summary>Professor annotations on the student's sheet — visible to professors only, never to the student.</summary>
     public List<StudentNote> Notes { get; set; } = [];
+
+    /// <summary>Audit trail of administrator edits to this ficha.</summary>
+    public List<StudentEditLog> EditLogs { get; set; } = [];
 }

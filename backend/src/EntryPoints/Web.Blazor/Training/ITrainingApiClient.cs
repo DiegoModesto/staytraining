@@ -3,9 +3,23 @@ namespace Web.Blazor.Training;
 /// <summary>Typed client for the StayTraining Web.API (reached through the gateway).</summary>
 public interface ITrainingApiClient
 {
-    Task<IReadOnlyList<MuscleGroupDto>> ListMuscleGroupsAsync(CancellationToken ct);
+    // Current user's profile ("Meu perfil")
+    Task<ProfileDto?> GetMyProfileAsync(CancellationToken ct);
+    Task UpdateMyProfileAsync(UpdateProfileRequest request, CancellationToken ct);
+    Task<UploadPhotoResponse> UploadMyProfilePhotoAsync(byte[] bytes, string fileName, string contentType, CancellationToken ct);
 
-    Task<IReadOnlyList<ExerciseListItemDto>> ListExercisesAsync(ExerciseCategory? category, CancellationToken ct);
+    Task<IReadOnlyList<MuscleGroupDto>> ListMuscleGroupsAsync(CancellationToken ct);
+    Task<Guid> CreateMuscleGroupAsync(CreateMuscleGroupRequest request, CancellationToken ct);
+    Task UpdateMuscleGroupAsync(Guid id, UpdateMuscleGroupRequest request, CancellationToken ct);
+    Task DeleteMuscleGroupAsync(Guid id, CancellationToken ct);
+
+    // Modalities (admin-managed catalog)
+    Task<IReadOnlyList<ModalityDto>> ListModalitiesAsync(CancellationToken ct);
+    Task<Guid> CreateModalityAsync(CreateModalityRequest request, CancellationToken ct);
+    Task UpdateModalityAsync(Guid id, UpdateModalityRequest request, CancellationToken ct);
+    Task DeleteModalityAsync(Guid id, CancellationToken ct);
+
+    Task<IReadOnlyList<ExerciseListItemDto>> ListExercisesAsync(Guid? modalityId, CancellationToken ct);
     Task<Guid> CreateExerciseAsync(CreateExerciseRequest request, CancellationToken ct);
 
     Task<IReadOnlyList<WorkoutTemplateListItemDto>> ListTemplatesAsync(bool? onlySystemDefaults, CancellationToken ct);
@@ -13,7 +27,25 @@ public interface ITrainingApiClient
     Task<IReadOnlyList<StudentListItemDto>> ListStudentsAsync(CancellationToken ct);
     Task<StudentDetailDto?> GetStudentAsync(Guid id, CancellationToken ct);
     Task<Guid> RegisterStudentAsync(RegisterStudentRequest request, CancellationToken ct);
-    Task<Guid> AddHealthObservationAsync(Guid studentId, AddHealthObservationRequest request, CancellationToken ct);
+
+    // Admin ficha editing (audited)
+    Task UpdateStudentFichaAsync(Guid studentId, UpdateStudentFichaRequest request, CancellationToken ct);
+    Task<Guid> AddStudentApportmentAsync(Guid studentId, AddApportmentRequest request, CancellationToken ct);
+    Task RemoveStudentApportmentAsync(Guid studentId, Guid apportmentId, CancellationToken ct);
+    Task<IReadOnlyList<StudentEditLogDto>> ListStudentEditLogsAsync(Guid studentId, CancellationToken ct);
+
+    // Student self-service apports (own ficha)
+    Task<Guid> AddMyApportmentAsync(AddApportmentRequest request, CancellationToken ct);
+    Task RemoveMyApportmentAsync(Guid apportmentId, CancellationToken ct);
+
+    // Health-issue catalog
+    Task<IReadOnlyList<BodyPartDto>> ListHealthCatalogAsync(CancellationToken ct);
+    Task<Guid> CreateBodyPartAsync(CatalogNameRequest request, CancellationToken ct);
+    Task UpdateBodyPartAsync(Guid id, CatalogNameRequest request, CancellationToken ct);
+    Task DeleteBodyPartAsync(Guid id, CancellationToken ct);
+    Task<Guid> CreateProblemTypeAsync(CreateProblemTypeRequest request, CancellationToken ct);
+    Task UpdateProblemTypeAsync(Guid id, CatalogNameRequest request, CancellationToken ct);
+    Task DeleteProblemTypeAsync(Guid id, CancellationToken ct);
 
     Task<IReadOnlyList<StudentNoteDto>> ListStudentNotesAsync(Guid studentId, CancellationToken ct);
     Task<Guid> AddStudentNoteAsync(Guid studentId, AddStudentNoteRequest request, CancellationToken ct);

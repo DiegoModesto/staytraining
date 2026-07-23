@@ -1,19 +1,50 @@
 namespace Web.Blazor.Training;
 
-// Enums mirror the API domain enums (numeric JSON by default).
-public enum ExerciseCategory { Musculacao = 0, Funcional = 1, Boxe = 2, Aerobico = 3 }
+// Mirrors Domain.Profiles.BloodType (numeric JSON).
+public enum BloodType { Unknown = 0, APositive, ANegative, BPositive, BNegative, AbPositive, AbNegative, OPositive, ONegative }
 
-public enum HealthObservationKind { HealthIssue = 0, ProfessorNote = 1 }
+public sealed record ProfileDto(
+    bool IsStudent,
+    string FullName,
+    string Email,
+    string? Phone,
+    string? EmergencyPhone,
+    BloodType BloodType,
+    int? HeightCm,
+    decimal? WeightKg,
+    string? PhotoUrl);
+
+public sealed record UpdateProfileRequest(
+    string FullName,
+    string Email,
+    string? Phone,
+    string? EmergencyPhone,
+    BloodType BloodType,
+    int? HeightCm,
+    decimal? WeightKg);
+
+public sealed record UploadPhotoResponse(string Key, string PhotoUrl);
 
 public sealed record MuscleGroupDto(Guid Id, string Name, string BodyRegion);
 
+public sealed record CreateMuscleGroupRequest(string Name, string BodyRegion);
+
+public sealed record UpdateMuscleGroupRequest(string Name, string BodyRegion);
+
+// ---- Modalities (admin-managed catalog) ----
+public sealed record ModalityDto(Guid Id, string Name, string ColorHex, bool IsIntervalBased, int SortOrder);
+
+public sealed record CreateModalityRequest(string Name, string ColorHex, bool IsIntervalBased, int SortOrder);
+
+public sealed record UpdateModalityRequest(string Name, string ColorHex, bool IsIntervalBased, int SortOrder);
+
 public sealed record ExerciseListItemDto(
-    Guid Id, string Name, ExerciseCategory Category, Guid PrimaryMuscleGroupId, bool IsAerobic);
+    Guid Id, string Name, Guid ModalityId, string ModalityName, Guid PrimaryMuscleGroupId, bool IsAerobic);
 
 public sealed record CreateExerciseRequest(
     string Name,
     string? Description,
-    ExerciseCategory Category,
+    Guid ModalityId,
     Guid PrimaryMuscleGroupId,
     string? UsageExample,
     int DefaultSets,
@@ -22,12 +53,13 @@ public sealed record CreateExerciseRequest(
     bool IsAerobic);
 
 public sealed record WorkoutTemplateListItemDto(
-    Guid Id, string Name, ExerciseCategory? Category, bool IsSystemDefault, int ItemCount);
+    Guid Id, string Name, Guid? ModalityId, string? ModalityName, bool IsSystemDefault, int ItemCount);
 
 public sealed record StudentListItemDto(Guid Id, Guid UserId, string FullName, string? Email);
 
-public sealed record HealthObservationDto(
-    Guid Id, HealthObservationKind Kind, string Title, string? Detail, DateTimeOffset CreatedAt);
+public sealed record HealthApportmentDto(
+    Guid Id, Guid BodyPartId, string BodyPartName, Guid ProblemTypeId, string ProblemTypeName,
+    string? Observation, DateTimeOffset CreatedAt);
 
 public sealed record StudentDetailDto(
     Guid Id,
@@ -36,19 +68,39 @@ public sealed record StudentDetailDto(
     string? Email,
     DateOnly? BirthDate,
     string? Goals,
-    IReadOnlyList<HealthObservationDto> HealthObservations);
+    string? Phone,
+    string? EmergencyPhone,
+    BloodType BloodType,
+    int? HeightCm,
+    decimal? WeightKg,
+    string? PhotoUrl,
+    IReadOnlyList<HealthApportmentDto> HealthApportments);
 
 public sealed record RegisterStudentRequest(
     Guid UserId, string FullName, string? Email, DateOnly? BirthDate, string? Goals);
 
-public sealed record AddHealthObservationRequest(HealthObservationKind Kind, string Title, string? Detail);
+public sealed record AddApportmentRequest(Guid BodyPartId, Guid ProblemTypeId, string? Observation);
+
+public sealed record UpdateStudentFichaRequest(
+    string FullName, string? Email, string? Phone, string? EmergencyPhone,
+    BloodType BloodType, int? HeightCm, decimal? WeightKg, string? Goals);
+
+public sealed record StudentEditLogDto(
+    Guid Id, Guid EditorUserId, string EditorName, string Action, string Detail, DateTimeOffset CreatedAt);
+
+// Health-issue catalog (body part -> problem types), admin-managed under Configurações.
+public sealed record ProblemTypeDto(Guid Id, string Name, int SortOrder);
+public sealed record BodyPartDto(Guid Id, string Name, int SortOrder, IReadOnlyList<ProblemTypeDto> ProblemTypes);
+public sealed record CatalogNameRequest(string Name);
+public sealed record CreateProblemTypeRequest(Guid BodyPartId, string Name);
 
 public sealed record StudentNoteDto(
-    Guid Id, Guid AuthorUserId, string AuthorName, string Content, DateTimeOffset CreatedAt);
+    Guid Id, Guid? WorkoutId, Guid AuthorUserId, string AuthorName, string Content, DateTimeOffset CreatedAt);
 
-public sealed record AddStudentNoteRequest(string Content);
+public sealed record AddStudentNoteRequest(string Content, Guid? WorkoutId = null);
 
-public sealed record WorkoutListItemDto(Guid Id, string Name, ExerciseCategory? Category, int ItemCount);
+public sealed record WorkoutListItemDto(
+    Guid Id, string Name, Guid? ModalityId, string? ModalityName, int ItemCount);
 
 public sealed record CreateWorkoutFromTemplateRequest(Guid TemplateId, Guid OwnerStudentId, string? NameOverride);
 
@@ -76,7 +128,7 @@ public sealed record CreateWorkoutRequest(
     Guid OwnerStudentId,
     string Name,
     string? Description,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
     IReadOnlyCollection<WorkoutItemInput> Items);
 
 public sealed record WorkoutItemDto(
@@ -99,7 +151,8 @@ public sealed record WorkoutDetailDto(
     Guid? SourceTemplateId,
     string Name,
     string? Description,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
+    string? ModalityName,
     IReadOnlyList<WorkoutItemDto> Items);
 
 public sealed record ReorderWorkoutItemsRequest(IReadOnlyList<Guid> OrderedItemIds);
@@ -122,7 +175,7 @@ public sealed record TemplateItemInput(
 public sealed record CreateWorkoutTemplateRequest(
     string Name,
     string? Description,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
     bool IsSystemDefault,
     string? CreatorNotes,
     IReadOnlyCollection<TemplateItemInput> Items);
@@ -145,7 +198,8 @@ public sealed record WorkoutTemplateDetailDto(
     Guid Id,
     string Name,
     string? Description,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
+    string? ModalityName,
     bool IsSystemDefault,
     string? CreatorNotes,
     IReadOnlyList<TemplateItemDto> Items);

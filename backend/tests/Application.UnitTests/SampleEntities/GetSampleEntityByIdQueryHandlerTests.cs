@@ -4,7 +4,10 @@ using Application.SampleEntities.GetById;
 using Domain.Devices;
 using Domain.Execution;
 using Domain.Exercises;
+using Domain.HealthCatalog;
+using Domain.Modalities;
 using Domain.MuscleGroups;
+using Domain.Profiles;
 using Domain.SampleEntities;
 using Domain.Students;
 using Domain.Workouts;
@@ -20,6 +23,8 @@ public class GetSampleEntityByIdQueryHandlerTests
         : DbContext(options), IApplicationDbContext
     {
         public DbSet<SampleEntity> SampleEntities => Set<SampleEntity>();
+        public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+        public DbSet<Modality> Modalities => Set<Modality>();
         public DbSet<MuscleGroup> MuscleGroups => Set<MuscleGroup>();
         public DbSet<Exercise> Exercises => Set<Exercise>();
         public DbSet<ExerciseMedia> ExerciseMedia => Set<ExerciseMedia>();
@@ -32,8 +37,11 @@ public class GetSampleEntityByIdQueryHandlerTests
         public DbSet<ExerciseNote> ExerciseNotes => Set<ExerciseNote>();
         public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
         public DbSet<StudentProfile> StudentProfiles => Set<StudentProfile>();
-        public DbSet<HealthObservation> HealthObservations => Set<HealthObservation>();
+        public DbSet<HealthApportment> HealthApportments => Set<HealthApportment>();
         public DbSet<StudentNote> StudentNotes => Set<StudentNote>();
+        public DbSet<StudentEditLog> StudentEditLogs => Set<StudentEditLog>();
+        public DbSet<BodyPart> BodyParts => Set<BodyPart>();
+        public DbSet<ProblemType> ProblemTypes => Set<ProblemType>();
     }
 
     private static TestDbContext CreateContext() =>

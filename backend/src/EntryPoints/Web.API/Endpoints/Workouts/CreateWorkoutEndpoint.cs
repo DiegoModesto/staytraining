@@ -1,7 +1,6 @@
 using Application.Abstractions.Messaging;
 using Application.Workouts;
 using Application.Workouts.Workouts.Create;
-using Domain.Exercises;
 using Web.API.Extensions;
 using Web.API.Infrastructure;
 
@@ -13,7 +12,7 @@ internal sealed class CreateWorkoutEndpoint : IEndpoint
         Guid OwnerStudentId,
         string Name,
         string? Description,
-        ExerciseCategory? Category,
+        Guid? ModalityId,
         IReadOnlyCollection<WorkoutItemInput> Items);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -27,7 +26,7 @@ internal sealed class CreateWorkoutEndpoint : IEndpoint
                     request.OwnerStudentId,
                     request.Name,
                     request.Description,
-                    request.Category,
+                    request.ModalityId,
                     request.Items ?? []);
 
                 var result = await handler.Handle(command, cancellationToken);

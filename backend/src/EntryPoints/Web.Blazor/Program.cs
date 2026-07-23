@@ -56,6 +56,8 @@ builder.Services.AddHttpClient<Web.Blazor.Training.ITrainingApiClient, Web.Blazo
     c.Timeout = TimeSpan.FromSeconds(15);
 });
 
+builder.Services.AddScoped<Web.Blazor.Training.ModalityCatalog>();
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 

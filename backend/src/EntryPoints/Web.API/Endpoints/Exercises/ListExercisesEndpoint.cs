@@ -1,6 +1,5 @@
 using Application.Abstractions.Messaging;
 using Application.Exercises.List;
-using Domain.Exercises;
 using Web.API.Extensions;
 using Web.API.Infrastructure;
 
@@ -11,11 +10,11 @@ internal sealed class ListExercisesEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("exercises", async (
-                ExerciseCategory? category,
+                Guid? modalityId,
                 IQueryHandler<ListExercisesQuery, IReadOnlyCollection<ExerciseListItemResponse>> handler,
                 CancellationToken cancellationToken) =>
             {
-                var result = await handler.Handle(new ListExercisesQuery(category), cancellationToken);
+                var result = await handler.Handle(new ListExercisesQuery(modalityId), cancellationToken);
 
                 return result.Match(Results.Ok, CustomResults.Problem);
             })

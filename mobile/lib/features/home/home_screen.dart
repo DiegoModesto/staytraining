@@ -35,6 +35,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: const Text('StayTraining'),
         actions: [
           IconButton(
+            tooltip: 'Meu perfil',
+            icon: const Icon(Icons.account_circle),
+            onPressed: () => context.go('/profile'),
+          ),
+          IconButton(
             tooltip: 'Sincronizar',
             icon: const Icon(Icons.sync),
             onPressed: () async {
@@ -147,6 +152,7 @@ class _NavCards extends StatelessWidget {
       _tile(context, Icons.fitness_center, 'Meus treinos', '/workouts'),
       _tile(context, Icons.notes, 'Anotações', '/notes'),
       _tile(context, Icons.insights, 'Relatório semanal', '/reports'),
+      _tile(context, Icons.account_circle, 'Meu perfil', '/profile'),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: tiles);
   }

@@ -31,6 +31,8 @@ dependencies:
   cached_network_image: ^3.4.1
   youtube_player_flutter: ^9.1.1
   video_player: ^2.9.2
+  image_picker: ^1.1.2
+  image_cropper: ^8.0.2
 
   # Local notifications (offline pending reminders). FCM push is optional — see README.
   flutter_local_notifications: ^17.2.4

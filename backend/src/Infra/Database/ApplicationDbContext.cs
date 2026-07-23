@@ -2,7 +2,10 @@ using Application.Abstractions.Data;
 using Domain.Devices;
 using Domain.Execution;
 using Domain.Exercises;
+using Domain.HealthCatalog;
+using Domain.Modalities;
 using Domain.MuscleGroups;
+using Domain.Profiles;
 using Domain.SampleEntities;
 using Domain.Students;
 using Domain.Workouts;
@@ -16,6 +19,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 {
     public DbSet<SampleEntity> SampleEntities { get; set; }
 
+    public DbSet<UserProfile> UserProfiles { get; set; }
+    public DbSet<Modality> Modalities { get; set; }
     public DbSet<MuscleGroup> MuscleGroups { get; set; }
     public DbSet<Exercise> Exercises { get; set; }
     public DbSet<ExerciseMedia> ExerciseMedia { get; set; }
@@ -32,8 +37,12 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<DeviceToken> DeviceTokens { get; set; }
 
     public DbSet<StudentProfile> StudentProfiles { get; set; }
-    public DbSet<HealthObservation> HealthObservations { get; set; }
+    public DbSet<HealthApportment> HealthApportments { get; set; }
     public DbSet<StudentNote> StudentNotes { get; set; }
+    public DbSet<StudentEditLog> StudentEditLogs { get; set; }
+
+    public DbSet<BodyPart> BodyParts { get; set; }
+    public DbSet<ProblemType> ProblemTypes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

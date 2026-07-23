@@ -10,6 +10,10 @@ public sealed class StudentNote
     public Guid Id { get; set; }
     public Guid StudentProfileId { get; set; }
 
+    /// <summary>When set, the annotation is scoped to a specific workout (shown on the "Treinos" tab);
+    /// when null it is a general student annotation (shown on the "Ficha" tab).</summary>
+    public Guid? WorkoutId { get; set; }
+
     /// <summary>Auth user id (<c>sub</c>) of the professor who wrote the annotation.</summary>
     public Guid AuthorUserId { get; set; }
 

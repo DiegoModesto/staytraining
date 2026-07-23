@@ -1,7 +1,6 @@
 using Application.Abstractions.Messaging;
 using Application.Exercises;
 using Application.Exercises.Create;
-using Domain.Exercises;
 using Web.API.Extensions;
 using Web.API.Infrastructure;
 
@@ -12,7 +11,7 @@ internal sealed class CreateExerciseEndpoint : IEndpoint
     public sealed record Request(
         string Name,
         string? Description,
-        ExerciseCategory Category,
+        Guid ModalityId,
         Guid PrimaryMuscleGroupId,
         IReadOnlyCollection<Guid>? SecondaryMuscleGroupIds,
         string? UsageExample,
@@ -35,7 +34,7 @@ internal sealed class CreateExerciseEndpoint : IEndpoint
                 var command = new CreateExerciseCommand(
                     request.Name,
                     request.Description,
-                    request.Category,
+                    request.ModalityId,
                     request.PrimaryMuscleGroupId,
                     request.SecondaryMuscleGroupIds,
                     request.UsageExample,

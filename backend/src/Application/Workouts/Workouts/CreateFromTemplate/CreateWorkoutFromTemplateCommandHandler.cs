@@ -42,7 +42,7 @@ public sealed class CreateWorkoutFromTemplateCommandHandler(
             SourceTemplateId = template.Id,
             Name = string.IsNullOrWhiteSpace(command.NameOverride) ? template.Name : command.NameOverride,
             Description = template.Description,
-            Category = template.Category,
+            ModalityId = template.ModalityId,
             CreatedAt = DateTimeOffset.UtcNow,
         };
 

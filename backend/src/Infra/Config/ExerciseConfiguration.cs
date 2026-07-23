@@ -16,13 +16,17 @@ internal sealed class ExerciseConfiguration : AbstractConfiguration<Exercise>
 
         builder.Property(e => e.TenantId).IsRequired();
         builder.HasIndex(e => new { e.TenantId, e.Id });
-        builder.HasIndex(e => new { e.TenantId, e.Category });
+        builder.HasIndex(e => new { e.TenantId, e.ModalityId });
 
         builder.Property(e => e.Name).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(2000);
         builder.Property(e => e.UsageExample).HasMaxLength(4000);
 
-        builder.Property(e => e.Category).HasConversion<string>().HasMaxLength(30);
+        builder.Property(e => e.ModalityId).IsRequired();
+        builder.HasOne(e => e.Modality)
+            .WithMany()
+            .HasForeignKey(e => e.ModalityId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(e => e.PrimaryMuscleGroupId).IsRequired();
 

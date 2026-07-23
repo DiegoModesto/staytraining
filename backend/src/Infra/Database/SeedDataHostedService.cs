@@ -1,5 +1,7 @@
 using Application.Abstractions.Data;
 using Domain.Exercises;
+using Domain.HealthCatalog;
+using Domain.Modalities;
 using Domain.MuscleGroups;
 using Domain.Students;
 using Domain.Workouts;
@@ -34,6 +36,8 @@ internal sealed class SeedDataHostedService(
         var db = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
 
         Dictionary<string, Guid> muscleByName = await SeedMuscleGroupsAsync(db, cancellationToken);
+        await SeedModalitiesAsync(db, cancellationToken);
+        await SeedHealthCatalogAsync(db, cancellationToken);
 
         string? tenantRaw = configuration["Seed:TenantId"];
         if (!Guid.TryParse(tenantRaw, out Guid tenantId))
@@ -76,13 +80,15 @@ internal sealed class SeedDataHostedService(
                 Goals = "Ganho de força e condicionamento geral.",
                 CreatedAt = DateTimeOffset.UtcNow,
             };
-            rita.HealthObservations.Add(new HealthObservation
+            rita.HealthApportments.Add(new HealthApportment
             {
                 Id = Guid.NewGuid(),
                 StudentProfileId = rita.Id,
-                Kind = HealthObservationKind.HealthIssue,
-                Title = "Cuidado com ombro direito",
-                Detail = "Evitar carga máxima em desenvolvimento; progressão gradual.",
+                BodyPartId = HealthCatalogDefaults.OmbroId,
+                BodyPartName = "Ombro",
+                ProblemTypeId = HealthCatalogDefaults.OmbroDeslocamentoId,
+                ProblemTypeName = "Deslocamento",
+                Observation = "Evitar carga máxima em desenvolvimento; progressão gradual.",
                 CreatedAt = DateTimeOffset.UtcNow,
             });
             rita.Notes.Add(new StudentNote
@@ -117,7 +123,7 @@ internal sealed class SeedDataHostedService(
                     OwnerStudentId = RitaStudentUserId,
                     SourceTemplateId = template.Id,
                     Name = template.Name,
-                    Category = template.Category,
+                    ModalityId = template.ModalityId,
                     CreatedAt = DateTimeOffset.UtcNow,
                 };
                 foreach (TemplateItem item in template.Items.OrderBy(i => i.Order))
@@ -170,30 +176,100 @@ internal sealed class SeedDataHostedService(
         return await db.MuscleGroups.ToDictionaryAsync(m => m.Name, m => m.Id, ct);
     }
 
+    /// <summary>Ensures the built-in modalities (global reference data) exist, matched by fixed id.</summary>
+    private static async Task SeedModalitiesAsync(IApplicationDbContext db, CancellationToken ct)
+    {
+        List<Guid> existing = await db.Modalities.Select(m => m.Id).ToListAsync(ct);
+        var existingSet = existing.ToHashSet();
+
+        foreach (ModalityDefaults.Seed seed in ModalityDefaults.All)
+        {
+            if (existingSet.Contains(seed.Id))
+            {
+                continue;
+            }
+
+            db.Modalities.Add(new Modality
+            {
+                Id = seed.Id,
+                Name = seed.Name,
+                ColorHex = seed.ColorHex,
+                IsIntervalBased = seed.IsIntervalBased,
+                SortOrder = seed.SortOrder,
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Ensures the built-in health-issue catalog (body parts + problem types) exists.</summary>
+    private static async Task SeedHealthCatalogAsync(IApplicationDbContext db, CancellationToken ct)
+    {
+        List<Guid> existingParts = await db.BodyParts.Select(b => b.Id).ToListAsync(ct);
+        var partSet = existingParts.ToHashSet();
+        List<Guid> existingProblems = await db.ProblemTypes.Select(p => p.Id).ToListAsync(ct);
+        var problemSet = existingProblems.ToHashSet();
+
+        foreach (HealthCatalogDefaults.BodyPartSeed part in HealthCatalogDefaults.All)
+        {
+            if (!partSet.Contains(part.Id))
+            {
+                db.BodyParts.Add(new BodyPart
+                {
+                    Id = part.Id,
+                    Name = part.Name,
+                    SortOrder = part.SortOrder,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                });
+            }
+
+            int order = 0;
+            foreach (HealthCatalogDefaults.ProblemSeed problem in part.Problems)
+            {
+                if (!problemSet.Contains(problem.Id))
+                {
+                    db.ProblemTypes.Add(new ProblemType
+                    {
+                        Id = problem.Id,
+                        BodyPartId = part.Id,
+                        Name = problem.Name,
+                        SortOrder = order,
+                        CreatedAt = DateTimeOffset.UtcNow,
+                    });
+                }
+
+                order++;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
     private static async Task<Dictionary<string, Guid>> SeedExercisesAsync(
         IApplicationDbContext db, Guid tenantId, Dictionary<string, Guid> muscle, CancellationToken ct)
     {
-        // Name, Category, PrimaryMuscle, IsAerobic, sets, reps, rest, work?, intervalRest?, rounds?
-        (string Name, ExerciseCategory Cat, string Muscle, bool Aer, int Sets, int Reps, int RestS,
+        // Name, ModalityId, PrimaryMuscle, IsAerobic, sets, reps, rest, work?, intervalRest?, rounds?
+        (string Name, Guid Mod, string Muscle, bool Aer, int Sets, int Reps, int RestS,
             int? Work, int? IRest, int? Rounds)[] exercises =
         [
-            ("Supino reto", ExerciseCategory.Musculacao, "Peito", false, 4, 10, 90, null, null, null),
-            ("Crucifixo", ExerciseCategory.Musculacao, "Peito", false, 3, 12, 60, null, null, null),
-            ("Puxada frente", ExerciseCategory.Musculacao, "Costas", false, 4, 10, 90, null, null, null),
-            ("Remada curvada", ExerciseCategory.Musculacao, "Costas", false, 4, 10, 90, null, null, null),
-            ("Desenvolvimento militar", ExerciseCategory.Musculacao, "Ombro", false, 4, 10, 90, null, null, null),
-            ("Elevação lateral", ExerciseCategory.Musculacao, "Ombro", false, 3, 15, 45, null, null, null),
-            ("Rosca direta", ExerciseCategory.Musculacao, "Bíceps", false, 3, 12, 60, null, null, null),
-            ("Tríceps corda", ExerciseCategory.Musculacao, "Tríceps", false, 3, 12, 60, null, null, null),
-            ("Agachamento livre", ExerciseCategory.Musculacao, "Quadríceps", false, 4, 10, 120, null, null, null),
-            ("Levantamento terra", ExerciseCategory.Musculacao, "Posterior de coxa", false, 4, 8, 120, null, null, null),
-            ("Prancha", ExerciseCategory.Funcional, "Abdômen", false, 3, 1, 60, null, null, null),
-            ("Burpee", ExerciseCategory.Funcional, "Corpo inteiro", true, 3, 12, 45, null, null, null),
-            ("Afundo", ExerciseCategory.Funcional, "Quadríceps", false, 3, 12, 60, null, null, null),
-            ("Jab e direto (sombra)", ExerciseCategory.Boxe, "Corpo inteiro", true, 5, 1, 60, 120, 30, 5),
-            ("Saco pesado", ExerciseCategory.Boxe, "Corpo inteiro", true, 5, 1, 60, 120, 60, 5),
-            ("Polichinelo", ExerciseCategory.Aerobico, "Corpo inteiro", true, 5, 1, 30, 60, 30, 5),
-            ("Pular corda", ExerciseCategory.Aerobico, "Corpo inteiro", true, 5, 1, 30, 90, 30, 5),
+            ("Supino reto", ModalityDefaults.MusculacaoId, "Peito", false, 4, 10, 90, null, null, null),
+            ("Crucifixo", ModalityDefaults.MusculacaoId, "Peito", false, 3, 12, 60, null, null, null),
+            ("Puxada frente", ModalityDefaults.MusculacaoId, "Costas", false, 4, 10, 90, null, null, null),
+            ("Remada curvada", ModalityDefaults.MusculacaoId, "Costas", false, 4, 10, 90, null, null, null),
+            ("Desenvolvimento militar", ModalityDefaults.MusculacaoId, "Ombro", false, 4, 10, 90, null, null, null),
+            ("Elevação lateral", ModalityDefaults.MusculacaoId, "Ombro", false, 3, 15, 45, null, null, null),
+            ("Rosca direta", ModalityDefaults.MusculacaoId, "Bíceps", false, 3, 12, 60, null, null, null),
+            ("Tríceps corda", ModalityDefaults.MusculacaoId, "Tríceps", false, 3, 12, 60, null, null, null),
+            ("Agachamento livre", ModalityDefaults.MusculacaoId, "Quadríceps", false, 4, 10, 120, null, null, null),
+            ("Levantamento terra", ModalityDefaults.MusculacaoId, "Posterior de coxa", false, 4, 8, 120, null, null, null),
+            ("Prancha", ModalityDefaults.FuncionalId, "Abdômen", false, 3, 1, 60, null, null, null),
+            ("Burpee", ModalityDefaults.FuncionalId, "Corpo inteiro", true, 3, 12, 45, null, null, null),
+            ("Afundo", ModalityDefaults.FuncionalId, "Quadríceps", false, 3, 12, 60, null, null, null),
+            ("Jab e direto (sombra)", ModalityDefaults.BoxeId, "Corpo inteiro", true, 5, 1, 60, 120, 30, 5),
+            ("Saco pesado", ModalityDefaults.BoxeId, "Corpo inteiro", true, 5, 1, 60, 120, 60, 5),
+            ("Polichinelo", ModalityDefaults.AerobicoId, "Corpo inteiro", true, 5, 1, 30, 60, 30, 5),
+            ("Pular corda", ModalityDefaults.AerobicoId, "Corpo inteiro", true, 5, 1, 30, 90, 30, 5),
         ];
 
         var existing = await db.Exercises
@@ -214,7 +290,7 @@ internal sealed class SeedDataHostedService(
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
                 Name = x.Name,
-                Category = x.Cat,
+                ModalityId = x.Mod,
                 PrimaryMuscleGroupId = muscle.TryGetValue(x.Muscle, out Guid mid) ? mid : Guid.Empty,
                 IsAerobic = x.Aer,
                 DefaultSets = x.Sets,
@@ -237,24 +313,24 @@ internal sealed class SeedDataHostedService(
     private static async Task SeedTemplatesAsync(
         IApplicationDbContext db, Guid tenantId, Dictionary<string, Guid> exercise, CancellationToken ct)
     {
-        // Template name, category, notes, items: (exerciseName, section)
-        (string Name, ExerciseCategory Cat, string Notes, (string Exercise, string Section)[] Items)[] templates =
+        // Template name, modality, notes, items: (exerciseName, section)
+        (string Name, Guid Mod, string Notes, (string Exercise, string Section)[] Items)[] templates =
         [
-            ("Costas e Ombro", ExerciseCategory.Musculacao, "Foco em puxadas e desenvolvimento.",
+            ("Costas e Ombro", ModalityDefaults.MusculacaoId, "Foco em puxadas e desenvolvimento.",
             [
                 ("Puxada frente", "Costas"), ("Remada curvada", "Costas"), ("Levantamento terra", "Costas"),
                 ("Desenvolvimento militar", "Ombro"), ("Elevação lateral", "Ombro"),
             ]),
-            ("Peito e Bíceps", ExerciseCategory.Musculacao, "Empurrar + rosca.",
+            ("Peito e Bíceps", ModalityDefaults.MusculacaoId, "Empurrar + rosca.",
             [
                 ("Supino reto", "Peito"), ("Crucifixo", "Peito"), ("Rosca direta", "Bíceps"),
             ]),
-            ("Funcional Full Body", ExerciseCategory.Funcional, "Circuito de corpo inteiro.",
+            ("Funcional Full Body", ModalityDefaults.FuncionalId, "Circuito de corpo inteiro.",
             [
                 ("Agachamento livre", "Pernas"), ("Afundo", "Pernas"),
                 ("Prancha", "Core"), ("Burpee", "Cardio"),
             ]),
-            ("Boxe - Iniciante", ExerciseCategory.Boxe, "Intervalado com foco técnico.",
+            ("Boxe - Iniciante", ModalityDefaults.BoxeId, "Intervalado com foco técnico.",
             [
                 ("Jab e direto (sombra)", "Técnica"), ("Saco pesado", "Potência"), ("Pular corda", "Condicionamento"),
             ]),
@@ -278,7 +354,7 @@ internal sealed class SeedDataHostedService(
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
                 Name = t.Name,
-                Category = t.Cat,
+                ModalityId = t.Mod,
                 IsSystemDefault = true,
                 CreatorNotes = t.Notes,
                 CreatedAt = DateTimeOffset.UtcNow,

@@ -1,21 +1,10 @@
 // Data models mirroring the StayTraining Web.API responses.
 // Enums map to the API's numeric enum values (index-based).
-
-enum ExerciseCategory { musculacao, funcional, boxe, aerobico }
+//
+// "Modalidade" used to be a fixed enum; it is now an admin-managed catalog. Responses carry the
+// modality id plus a denormalized modality name (label), so this app just shows the name.
 
 enum ExerciseMediaKind { gif, uploadedVideo, youtubeUrl, muscleImage }
-
-ExerciseCategory categoryFromInt(int v) =>
-    ExerciseCategory.values[(v >= 0 && v < ExerciseCategory.values.length) ? v : 0];
-
-extension ExerciseCategoryLabel on ExerciseCategory {
-  String get label => switch (this) {
-        ExerciseCategory.musculacao => 'Musculação',
-        ExerciseCategory.funcional => 'Funcional',
-        ExerciseCategory.boxe => 'Boxe',
-        ExerciseCategory.aerobico => 'Aeróbico',
-      };
-}
 
 class MuscleGroup {
   MuscleGroup({required this.id, required this.name, required this.bodyRegion});
@@ -50,7 +39,8 @@ class Exercise {
     required this.id,
     required this.name,
     this.description,
-    required this.category,
+    required this.modalityId,
+    required this.modalityName,
     required this.primaryMuscleGroupId,
     this.usageExample,
     required this.defaultSets,
@@ -66,7 +56,8 @@ class Exercise {
   final String id;
   final String name;
   final String? description;
-  final ExerciseCategory category;
+  final String modalityId;
+  final String modalityName;
   final String primaryMuscleGroupId;
   final String? usageExample;
   final int defaultSets;
@@ -82,7 +73,8 @@ class Exercise {
         id: j['id'] as String,
         name: j['name'] as String,
         description: j['description'] as String?,
-        category: categoryFromInt((j['category'] as int?) ?? 0),
+        modalityId: (j['modalityId'] ?? '') as String,
+        modalityName: (j['modalityName'] ?? '') as String,
         primaryMuscleGroupId: (j['primaryMuscleGroupId'] ?? '') as String,
         usageExample: j['usageExample'] as String?,
         defaultSets: (j['defaultSets'] as int?) ?? 0,
@@ -152,7 +144,8 @@ class Workout {
     this.sourceTemplateId,
     required this.name,
     this.description,
-    this.category,
+    this.modalityId,
+    this.modalityName,
     this.items = const [],
   });
 
@@ -161,7 +154,8 @@ class Workout {
   final String? sourceTemplateId;
   final String name;
   final String? description;
-  final ExerciseCategory? category;
+  final String? modalityId;
+  final String? modalityName;
   final List<WorkoutItem> items;
 
   factory Workout.fromJson(Map<String, dynamic> j) => Workout(
@@ -170,7 +164,8 @@ class Workout {
         sourceTemplateId: j['sourceTemplateId'] as String?,
         name: j['name'] as String,
         description: j['description'] as String?,
-        category: j['category'] == null ? null : categoryFromInt(j['category'] as int),
+        modalityId: j['modalityId'] as String?,
+        modalityName: j['modalityName'] as String?,
         items: ((j['items'] as List?) ?? [])
             .map((i) => WorkoutItem.fromJson(i as Map<String, dynamic>))
             .toList(),
@@ -178,16 +173,18 @@ class Workout {
 }
 
 class WorkoutListItem {
-  WorkoutListItem({required this.id, required this.name, this.category, required this.itemCount});
+  WorkoutListItem({required this.id, required this.name, this.modalityId, this.modalityName, required this.itemCount});
   final String id;
   final String name;
-  final ExerciseCategory? category;
+  final String? modalityId;
+  final String? modalityName;
   final int itemCount;
 
   factory WorkoutListItem.fromJson(Map<String, dynamic> j) => WorkoutListItem(
         id: j['id'] as String,
         name: j['name'] as String,
-        category: j['category'] == null ? null : categoryFromInt(j['category'] as int),
+        modalityId: j['modalityId'] as String?,
+        modalityName: j['modalityName'] as String?,
         itemCount: (j['itemCount'] as int?) ?? 0,
       );
 }
@@ -253,5 +250,107 @@ class WeeklyReportExercise {
         totalSets: (j['totalSets'] as int?) ?? 0,
         totalReps: (j['totalReps'] as int?) ?? 0,
         maxLoadKg: (j['maxLoadKg'] as num?)?.toDouble(),
+      );
+}
+
+// ----- Profile / ficha -----
+
+// Mirrors Domain.Profiles.BloodType (numeric JSON).
+enum BloodType { unknown, aPositive, aNegative, bPositive, bNegative, abPositive, abNegative, oPositive, oNegative }
+
+BloodType bloodTypeFromInt(int v) =>
+    BloodType.values[(v >= 0 && v < BloodType.values.length) ? v : 0];
+
+extension BloodTypeLabel on BloodType {
+  String get label => switch (this) {
+        BloodType.aPositive => 'A+',
+        BloodType.aNegative => 'A−',
+        BloodType.bPositive => 'B+',
+        BloodType.bNegative => 'B−',
+        BloodType.abPositive => 'AB+',
+        BloodType.abNegative => 'AB−',
+        BloodType.oPositive => 'O+',
+        BloodType.oNegative => 'O−',
+        _ => 'Não informado',
+      };
+}
+
+class ProfileApportment {
+  ProfileApportment({required this.id, required this.bodyPartName, required this.problemTypeName, this.observation});
+  final String id;
+  final String bodyPartName;
+  final String problemTypeName;
+  final String? observation;
+
+  factory ProfileApportment.fromJson(Map<String, dynamic> j) => ProfileApportment(
+        id: j['id'] as String,
+        bodyPartName: (j['bodyPartName'] ?? '') as String,
+        problemTypeName: (j['problemTypeName'] ?? '') as String,
+        observation: j['observation'] as String?,
+      );
+}
+
+class Profile {
+  Profile({
+    required this.isStudent,
+    required this.fullName,
+    required this.email,
+    this.phone,
+    this.emergencyPhone,
+    this.bloodType = BloodType.unknown,
+    this.heightCm,
+    this.weightKg,
+    this.photoUrl,
+    this.apportments = const [],
+  });
+
+  final bool isStudent;
+  final String fullName;
+  final String email;
+  final String? phone;
+  final String? emergencyPhone;
+  final BloodType bloodType;
+  final int? heightCm;
+  final double? weightKg;
+  final String? photoUrl;
+  final List<ProfileApportment> apportments;
+
+  factory Profile.fromJson(Map<String, dynamic> j) => Profile(
+        isStudent: (j['isStudent'] as bool?) ?? false,
+        fullName: (j['fullName'] ?? '') as String,
+        email: (j['email'] ?? '') as String,
+        phone: j['phone'] as String?,
+        emergencyPhone: j['emergencyPhone'] as String?,
+        bloodType: bloodTypeFromInt((j['bloodType'] as int?) ?? 0),
+        heightCm: j['heightCm'] as int?,
+        weightKg: (j['weightKg'] as num?)?.toDouble(),
+        photoUrl: j['photoUrl'] as String?,
+        apportments: ((j['apportments'] as List?) ?? [])
+            .map((a) => ProfileApportment.fromJson(a as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+class CatalogProblemType {
+  CatalogProblemType({required this.id, required this.name});
+  final String id;
+  final String name;
+
+  factory CatalogProblemType.fromJson(Map<String, dynamic> j) =>
+      CatalogProblemType(id: j['id'] as String, name: (j['name'] ?? '') as String);
+}
+
+class CatalogBodyPart {
+  CatalogBodyPart({required this.id, required this.name, this.problemTypes = const []});
+  final String id;
+  final String name;
+  final List<CatalogProblemType> problemTypes;
+
+  factory CatalogBodyPart.fromJson(Map<String, dynamic> j) => CatalogBodyPart(
+        id: j['id'] as String,
+        name: (j['name'] ?? '') as String,
+        problemTypes: ((j['problemTypes'] as List?) ?? [])
+            .map((p) => CatalogProblemType.fromJson(p as Map<String, dynamic>))
+            .toList(),
       );
 }

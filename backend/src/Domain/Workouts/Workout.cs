@@ -1,4 +1,4 @@
-using Domain.Exercises;
+using Domain.Modalities;
 using SharedKernel;
 
 namespace Domain.Workouts;
@@ -21,7 +21,10 @@ public sealed class Workout : Entity, IHasUpdatedAt
 
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public ExerciseCategory? Category { get; set; }
+
+    /// <summary>Optional modality tag for the whole workout.</summary>
+    public Guid? ModalityId { get; set; }
+    public Modality? Modality { get; set; }
 
     public List<WorkoutItem> Items { get; set; } = [];
 }

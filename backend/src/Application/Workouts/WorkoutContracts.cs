@@ -1,5 +1,3 @@
-using Domain.Exercises;
-
 namespace Application.Workouts;
 
 /// <summary>Prescription entry accepted when creating/editing a template.</summary>
@@ -48,7 +46,8 @@ public sealed record WorkoutTemplateResponse(
     Guid Id,
     string Name,
     string? Description,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
+    string? ModalityName,
     bool IsSystemDefault,
     string? CreatorNotes,
     IReadOnlyCollection<TemplateItemResponse> Items);
@@ -56,7 +55,8 @@ public sealed record WorkoutTemplateResponse(
 public sealed record WorkoutTemplateListItemResponse(
     Guid Id,
     string Name,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
+    string? ModalityName,
     bool IsSystemDefault,
     int ItemCount);
 
@@ -80,11 +80,13 @@ public sealed record WorkoutResponse(
     Guid? SourceTemplateId,
     string Name,
     string? Description,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
+    string? ModalityName,
     IReadOnlyCollection<WorkoutItemResponse> Items);
 
 public sealed record WorkoutListItemResponse(
     Guid Id,
     string Name,
-    ExerciseCategory? Category,
+    Guid? ModalityId,
+    string? ModalityName,
     int ItemCount);
