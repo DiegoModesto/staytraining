@@ -56,6 +56,7 @@ paths:
   /exercises:
     get:
       tags: [Exercises]
+      operationId: listExercises
       summary: Listar exercícios
       description: "Lista exercícios do tenant, opcionalmente por modalidade. **Permissão:** `exercise.read`."
       parameters:
@@ -66,8 +67,11 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/ExerciseListItem" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [Exercises]
+      operationId: createExercise
       summary: Criar exercício
       description: "Cria um exercício. Modalidade e músculo primário são obrigatórios. **Permissão:** `exercise.write`."
       requestBody:
@@ -75,20 +79,27 @@ paths:
         content: { application/json: { schema: { $ref: "#/components/schemas/CreateExerciseRequest" } } }
       responses:
         "201": { $ref: "#/components/responses/Created" }
-        "400": { $ref: "#/components/responses/Problem" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /exercises/{id}:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     get:
       tags: [Exercises]
+      operationId: getExerciseById
       summary: Obter exercício
       description: "Detalhe do exercício, com músculos, prescrição e mídias. **Permissão:** `exercise.read`."
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Exercise" } } } }
-        "404": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /exercises/{id}/media:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     post:
       tags: [Exercises]
+      operationId: uploadExerciseMedia
       summary: Enviar mídia (upload)
       description: "Envia uma mídia (GIF/vídeo/imagem) via multipart; vai para o object storage. **Permissão:** `exercise.write`."
       requestBody:
@@ -104,10 +115,15 @@ paths:
         "201":
           description: Created
           content: { application/json: { schema: { type: object, properties: { id: { type: string, format: uuid }, key: { type: string } } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /exercises/{id}/media/youtube:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     post:
       tags: [Exercises]
+      operationId: addExerciseYoutubeMedia
       summary: Anexar link do YouTube
       description: "Anexa um link do YouTube como mídia. **Permissão:** `exercise.write`."
       requestBody:
@@ -115,283 +131,487 @@ paths:
         content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string, example: "https://youtu.be/xxxx" } } } } }
       responses:
         "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------- Muscle Groups ----------------
   /muscle-groups:
     get:
       tags: [Muscle Groups]
+      operationId: listMuscleGroups
       summary: Listar grupos musculares
       description: "Lista os grupos musculares. **Permissão:** `exercise.read`."
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/MuscleGroup" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [Muscle Groups]
+      operationId: createMuscleGroup
       summary: Criar grupo muscular
       description: "**Permissão:** `muscle.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/MuscleGroupRequest" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /muscle-groups/{id}:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     put:
       tags: [Muscle Groups]
+      operationId: updateMuscleGroup
       summary: Atualizar grupo muscular
       description: "**Permissão:** `muscle.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/MuscleGroupRequest" } } } }
-      responses: { "204": { description: No Content }, "409": { $ref: "#/components/responses/Problem" } }
+      responses:
+        "204": { description: No Content }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
     delete:
       tags: [Muscle Groups]
+      operationId: deleteMuscleGroup
       summary: Excluir grupo muscular
       description: "Soft-delete. Bloqueado (409) se em uso por exercícios. **Permissão:** `muscle.write`."
-      responses: { "204": { description: No Content }, "409": { $ref: "#/components/responses/Problem" } }
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   # ---------------- Modalities ----------------
   /modalities:
     get:
       tags: [Modalities]
+      operationId: listModalities
       summary: Listar modalidades
       description: "**Permissão:** `modality.read`."
-      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Modality" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Modality" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [Modalities]
+      operationId: createModality
       summary: Criar modalidade
       description: "**Permissão:** `modality.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ModalityRequest" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /modalities/{id}:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     put:
       tags: [Modalities]
+      operationId: updateModality
       summary: Atualizar modalidade
       description: "**Permissão:** `modality.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ModalityRequest" } } } }
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
     delete:
       tags: [Modalities]
+      operationId: deleteModality
       summary: Excluir modalidade
       description: "Soft-delete. Bloqueado (409) se em uso. **Permissão:** `modality.write`."
-      responses: { "204": { description: No Content }, "409": { $ref: "#/components/responses/Problem" } }
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   # ---------------- Health Catalog ----------------
   /health-catalog:
     get:
       tags: [Health Catalog]
+      operationId: getHealthCatalog
       summary: Listar catálogo de saúde
       description: "Partes do corpo com seus tipos de problema. **Permissão:** `healthcatalog.read`."
-      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BodyPart" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BodyPart" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /health-catalog/body-parts:
     post:
       tags: [Health Catalog]
+      operationId: createBodyPart
       summary: Criar parte do corpo
       description: "**Permissão:** `healthcatalog.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/NameRequest" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /health-catalog/body-parts/{id}:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     put:
       tags: [Health Catalog]
+      operationId: updateBodyPart
       summary: Renomear parte do corpo
       description: "**Permissão:** `healthcatalog.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/NameRequest" } } } }
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [Health Catalog]
+      operationId: deleteBodyPart
       summary: Excluir parte do corpo
       description: "Bloqueado (409) se houver apontamentos. **Permissão:** `healthcatalog.write`."
-      responses: { "204": { description: No Content }, "409": { $ref: "#/components/responses/Problem" } }
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /health-catalog/problem-types:
     post:
       tags: [Health Catalog]
+      operationId: createProblemType
       summary: Criar tipo de problema
       description: "**Permissão:** `healthcatalog.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateProblemTypeRequest" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /health-catalog/problem-types/{id}:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     put:
       tags: [Health Catalog]
+      operationId: updateProblemType
       summary: Renomear tipo de problema
       description: "**Permissão:** `healthcatalog.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/NameRequest" } } } }
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [Health Catalog]
+      operationId: deleteProblemType
       summary: Excluir tipo de problema
       description: "Bloqueado (409) se referenciado por apontamentos. **Permissão:** `healthcatalog.write`."
-      responses: { "204": { description: No Content }, "409": { $ref: "#/components/responses/Problem" } }
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   # ---------------- Workout Templates ----------------
   /workout-templates:
     get:
       tags: [Workout Templates]
+      operationId: listWorkoutTemplates
       summary: Listar modelos
       description: "**Permissão:** `template.read`."
       parameters: [ { name: onlySystemDefaults, in: query, required: false, schema: { type: boolean } } ]
-      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/WorkoutTemplateListItem" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/WorkoutTemplateListItem" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [Workout Templates]
+      operationId: createWorkoutTemplate
       summary: Criar modelo
       description: "**Permissão:** `template.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateWorkoutTemplateRequest" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /workout-templates/{id}:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     get:
       tags: [Workout Templates]
+      operationId: getWorkoutTemplateById
       summary: Obter modelo
       description: "**Permissão:** `template.read`."
-      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/WorkoutTemplate" } } } }, "404": { $ref: "#/components/responses/Problem" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/WorkoutTemplate" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------- Workouts ----------------
   /workouts:
     get:
       tags: [Workouts]
+      operationId: listWorkouts
       summary: Listar treinos
       description: "**Permissão:** `workout.read`."
       parameters: [ { name: ownerStudentId, in: query, required: false, schema: { type: string, format: uuid } } ]
-      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/WorkoutListItem" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/WorkoutListItem" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [Workouts]
+      operationId: createWorkout
       summary: Criar treino
       description: "Cria um treino do zero para um aluno. **Permissão:** `workout.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateWorkoutRequest" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /workouts/from-template:
     post:
       tags: [Workouts]
+      operationId: createWorkoutFromTemplate
       summary: Criar treino de um modelo
       description: "**Permissão:** `workout.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateWorkoutFromTemplateRequest" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /workouts/{id}:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     get:
       tags: [Workouts]
+      operationId: getWorkoutById
       summary: Obter treino
       description: "Detalhe com itens ordenados. **Permissão:** `workout.read`."
-      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Workout" } } } }, "404": { $ref: "#/components/responses/Problem" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Workout" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [Workouts]
+      operationId: deleteWorkout
       summary: Excluir treino
       description: "Soft-delete. **Permissão:** `workout.write`."
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /workouts/{id}/name:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     put:
       tags: [Workouts]
+      operationId: renameWorkout
       summary: Renomear treino
       description: "**Permissão:** `workout.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/NameRequest" } } } }
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /workouts/{id}/items:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     post:
       tags: [Workouts]
+      operationId: addWorkoutItem
       summary: Adicionar exercício ao treino
       description: "Corpo = item de prescrição. **Permissão:** `workout.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkoutItemInput" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /workouts/{id}/items/{itemId}:
     parameters:
       - { $ref: "#/components/parameters/Id" }
       - { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }
     delete:
       tags: [Workouts]
+      operationId: removeWorkoutItem
       summary: Remover exercício do treino
       description: "**Permissão:** `workout.write`."
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /workouts/{id}/items/order:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     put:
       tags: [Workouts]
+      operationId: reorderWorkoutItems
       summary: Reordenar itens
       description: "**Permissão:** `workout.write`."
       requestBody:
         required: true
         content: { application/json: { schema: { type: object, required: [orderedItemIds], properties: { orderedItemIds: { type: array, items: { type: string, format: uuid } } } } } }
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------- Students ----------------
   /students:
     get:
       tags: [Students]
+      operationId: listStudents
       summary: Listar alunos
       description: "**Permissão:** `student.read`."
-      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudentListItem" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudentListItem" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [Students]
+      operationId: registerStudent
       summary: Cadastrar aluno
       description: "**Permissão:** `student.manage`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RegisterStudentRequest" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /students/{id}:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     get:
       tags: [Students]
+      operationId: getStudentById
       summary: Obter ficha do aluno
       description: "Dados pessoais, foto e apontamentos de saúde. **Permissão:** `student.read`."
-      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/StudentDetail" } } } }, "404": { $ref: "#/components/responses/Problem" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/StudentDetail" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /students/{id}/ficha:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     put:
       tags: [Students]
+      operationId: updateStudentFicha
       summary: Editar ficha (admin, auditado)
       description: "Admin edita os dados da ficha; a edição é registrada em edit-logs. **Permissão:** `studentficha.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UpdateStudentFichaRequest" } } } }
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /students/{id}/apportments:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     post:
       tags: [Students]
+      operationId: addStudentApportment
       summary: Adicionar apontamento (admin, auditado)
       description: "**Permissão:** `studentficha.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AddApportmentRequest" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /students/{id}/apportments/{apportmentId}:
     parameters:
       - { $ref: "#/components/parameters/Id" }
       - { name: apportmentId, in: path, required: true, schema: { type: string, format: uuid } }
     delete:
       tags: [Students]
+      operationId: removeStudentApportment
       summary: Remover apontamento (admin, auditado)
       description: "**Permissão:** `studentficha.write`."
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /students/{id}/edit-logs:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     get:
       tags: [Students]
+      operationId: listStudentEditLogs
       summary: Histórico de edições da ficha
       description: "**Permissão:** `studentficha.write`."
-      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudentEditLog" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudentEditLog" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /students/{id}/notes:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     get:
       tags: [Students]
+      operationId: listStudentNotes
       summary: Listar anotações do aluno
       description: "Anotações do professor (gerais e por treino). **Permissão:** `student.read`."
-      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudentNote" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudentNote" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [Students]
+      operationId: addStudentNote
       summary: Adicionar anotação
       description: "Anotação do professor (nunca visível ao aluno). Com `workoutId`, fica vinculada a um treino. **Permissão:** `health.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AddStudentNoteRequest" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------- Profiles ----------------
   /profiles/me:
     get:
       tags: [Profiles]
+      operationId: getMyProfile
       summary: Meu perfil
       description: "Perfil do usuário atual. `isStudent` indica se é ficha de aluno. *Autenticado.*"
-      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Profile" } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Profile" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
     put:
       tags: [Profiles]
+      operationId: updateMyProfile
       summary: Atualizar meu perfil
       description: "Atualiza os dados do próprio perfil. *Autenticado.*"
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UpdateProfileRequest" } } } }
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
   /profiles/me/photo:
     post:
       tags: [Profiles]
+      operationId: uploadMyProfilePhoto
       summary: Enviar foto do perfil
       description: "Multipart, imagem ≤ 2 MB. Guarda no storage e devolve URL pré-assinada. *Autenticado.*"
       requestBody:
@@ -403,115 +623,179 @@ paths:
         "200":
           description: OK
           content: { application/json: { schema: { type: object, properties: { key: { type: string }, photoUrl: { type: string } }, example: { key: "avatars/1111.../3333....jpg", photoUrl: "https://.../avatars/...jpg?sig=..." } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
   /profiles/me/apportments:
     post:
       tags: [Profiles]
+      operationId: addMyApportment
       summary: Adicionar apontamento (aluno)
       description: "O aluno adiciona um apontamento de saúde na própria ficha. *Autenticado.*"
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AddApportmentRequest" } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /profiles/me/apportments/{id}:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     delete:
       tags: [Profiles]
+      operationId: removeMyApportment
       summary: Remover apontamento (aluno)
       description: "O aluno remove um apontamento da própria ficha. *Autenticado.*"
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------- Sessions ----------------
   /sessions:
     post:
       tags: [Sessions]
+      operationId: startSession
       summary: Iniciar sessão
       description: "Inicia a execução de um treino. **Permissão:** `session.write`."
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [workoutId], properties: { workoutId: { type: string, format: uuid } } } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /sessions/{id}/complete:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     post:
       tags: [Sessions]
+      operationId: completeSession
       summary: Concluir sessão
       description: "**Permissão:** `session.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CompleteSessionRequest" } } } }
-      responses: { "204": { description: No Content } }
+      responses:
+        "204": { description: No Content }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /sessions/{id}/notes:
     parameters: [ { $ref: "#/components/parameters/Id" } ]
     get:
       tags: [Notes]
+      operationId: getSessionNotes
       summary: Notas de execução da sessão
       description: "**Permissão:** `workout.read`."
-      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ExerciseNote" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ExerciseNote" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     put:
       tags: [Sessions]
+      operationId: upsertExerciseNote
       summary: Registrar/atualizar nota de execução (upsert)
       description: "Upsert da nota de um exercício na sessão. Retorna **200**. **Permissão:** `note.write`."
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UpsertExerciseNoteRequest" } } } }
-      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IdResponse" } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IdResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------- Schedule ----------------
   /schedule/week:
     get:
       tags: [Schedule]
+      operationId: getWeekSchedule
       summary: Agenda da semana
       description: "**Permissão:** `workout.read`."
       parameters:
         - { name: weekStart, in: query, required: true, schema: { type: string, format: date }, description: "Início da semana (yyyy-MM-dd)" }
         - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
-      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/WeekScheduleItem" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/WeekScheduleItem" } } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /schedule:
     post:
       tags: [Schedule]
+      operationId: scheduleWorkout
       summary: Agendar treino
       description: "**Permissão:** `session.write`."
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [workoutId, date], properties: { workoutId: { type: string, format: uuid }, date: { type: string, format: date } } } } } }
-      responses: { "201": { $ref: "#/components/responses/Created" } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   # ---------------- Reports ----------------
   /reports/weekly:
     get:
       tags: [Reports]
+      operationId: getWeeklyReport
       summary: Relatório semanal
       description: "Resumo da semana: sessões, médias e por exercício. **Permissão:** `report.read`."
       parameters:
         - { name: weekStart, in: query, required: true, schema: { type: string, format: date } }
         - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
-      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/WeeklyReport" } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/WeeklyReport" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   # ---------------- Notes ----------------
   /notes:
     get:
       tags: [Notes]
+      operationId: listNotes
       summary: Listar notas de execução
       description: "Filtrável por aluno/exercício. **Permissão:** `report.read`."
       parameters:
         - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
         - { name: exerciseId, in: query, required: false, schema: { type: string, format: uuid } }
-      responses: { "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ExerciseNote" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ExerciseNote" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   # ---------------- Sync ----------------
   /sync/pull:
     get:
       tags: [Sync]
+      operationId: syncPull
       summary: Pull de mudanças (delta)
       description: "Puxa mudanças desde `since`. Sem `since`, devolve tudo. **Permissão:** `workout.read`."
       parameters: [ { name: since, in: query, required: false, schema: { type: string, format: date-time } } ]
-      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SyncPullResponse" } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SyncPullResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /sync/sessions:
     post:
       tags: [Sync]
+      operationId: syncPushSessions
       summary: Push de sessões executadas
       description: "Envia sessões offline (idempotente por id). **Permissão:** `session.write`."
       requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { sessions: { type: array, items: { $ref: "#/components/schemas/SessionPushInput" } } } } } } }
-      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SyncPushResult" } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SyncPushResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   # ---------------- Devices ----------------
   /devices/token:
     post:
       tags: [Devices]
+      operationId: registerDeviceToken
       summary: Registrar token de push
       description: "Registra o token de push (Platform: 0=Android, 1=iOS). Retorna **200**. *Autenticado.*"
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [token, platform], properties: { token: { type: string }, platform: { $ref: "#/components/schemas/DevicePlatform" } } } } } }
-      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IdResponse" } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IdResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
 components:
   securitySchemes:
@@ -522,20 +806,47 @@ components:
     Created:
       description: Created
       content: { application/json: { schema: { $ref: "#/components/schemas/IdResponse" } } }
-    Problem:
-      description: Erro (ProblemDetails RFC 7807)
+    BadRequest:
+      description: Requisição inválida (validação)
       content:
         application/problem+json:
-          schema:
-            type: object
-            properties:
-              type: { type: string }
-              title: { type: string }
-              status: { type: integer }
-              detail: { type: string }
-              errors: { type: object, additionalProperties: true }
-            example: { title: "Modality.InUse", status: 409, detail: "Modality '…' is referenced by exercises and cannot be deleted." }
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+          example: { title: "Validation.General", status: 400, detail: "One or more validation errors occurred.", errors: { Name: ["Name is required."] } }
+    Unauthorized:
+      description: Não autenticado (token ausente/inválido)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+          example: { title: "Unauthorized", status: 401 }
+    Forbidden:
+      description: Sem permissão para a operação
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+          example: { title: "Forbidden", status: 403 }
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+          example: { title: "Workout.NotFound", status: 404, detail: "Workout with id '…' was not found." }
+    Conflict:
+      description: "Conflito (ex.: nome duplicado ou recurso em uso)"
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+          example: { title: "Modality.InUse", status: 409, detail: "Modality '…' is referenced by exercises and cannot be deleted." }
   schemas:
+    ProblemDetails:
+      type: object
+      description: Erro no formato RFC 7807.
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        errors: { type: object, additionalProperties: true, description: "Presente em 400 de validação." }
     IdResponse:
       type: object
       properties: { id: { type: string, format: uuid } }
