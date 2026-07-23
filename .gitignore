@@ -18,9 +18,9 @@ mobile/build/
 mobile/.pub-cache/
 mobile/.pub/
 mobile/pubspec.lock
-# Generated platform folders (recreate with `flutter create .`)
-mobile/android/
-mobile/ios/
+# Native platform folders are versioned (they carry OIDC redirect scheme, HTTP/ATS dev config,
+# and future push/Firebase setup). Build artifacts are excluded by mobile/android/.gitignore and
+# mobile/ios/.gitignore. Desktop/web targets are unused — keep regenerating them with `flutter create .`.
 mobile/linux/
 mobile/macos/
 mobile/windows/
