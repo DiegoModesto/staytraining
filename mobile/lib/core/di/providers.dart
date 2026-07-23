@@ -9,6 +9,7 @@ import '../db/local_store.dart';
 import '../notifications/notification_service.dart';
 import '../notifications/push_registration_service.dart';
 import '../sync/sync_service.dart';
+import '../theme/theme_controller.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
@@ -32,11 +33,23 @@ final syncServiceProvider = Provider<SyncService>(
 
 final notificationServiceProvider = Provider<NotificationService>((ref) => NotificationService());
 
+/// App theme mode (Sistema/Claro/Escuro), persisted; defaults to following the OS.
+final themeControllerProvider = ChangeNotifierProvider<ThemeController>(
+  (ref) => ThemeController(ref.read(localStoreProvider)),
+);
+
 /// Registers the device push token with the backend. Uses a no-op token provider until Firebase
 /// is wired in (see [PushRegistrationService]); the whole thing is gated by `PUSH_ENABLED`.
 final pushRegistrationServiceProvider = Provider<PushRegistrationService>(
   (ref) => PushRegistrationService(ref.read(trainingApiProvider)),
 );
+
+/// Perfil do usuário logado, carregado uma vez e mantido em cache (resolve offline via cache HTTP
+/// do ApiClient). Usado, p.ex., para a saudação na home. `ref.invalidate` para forçar recarga.
+final myProfileProvider = FutureProvider<Profile>((ref) async {
+  ref.keepAlive();
+  return ref.read(trainingApiProvider).getMyProfile();
+});
 
 /// Catálogo de exercícios carregado uma vez e mantido em cache: resolve `exerciseId → nome`
 /// (e a modalidade), já que treinos/notas/relatório trazem só o id. `keepAlive` para não recarregar

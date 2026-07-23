@@ -110,15 +110,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async => _reload(),
+        onRefresh: () async {
+          ref.invalidate(myProfileProvider);
+          _reload();
+        },
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            AdaptiveContainer(child: _WeekList(future: _week)),
+            AdaptiveContainer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Greeting(name: ref.watch(myProfileProvider).asData?.value.fullName),
+                  const SizedBox(height: 16),
+                  _WeekList(future: _week),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+}
+
+/// Personalized greeting. Shows the student's first name once the profile loads; a neutral
+/// greeting meanwhile (and offline, until the cached profile arrives).
+class _Greeting extends StatelessWidget {
+  const _Greeting({required this.name});
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    final firstName = (name ?? '').trim().split(RegExp(r'\s+')).first;
+    final greeting = firstName.isEmpty ? 'Olá 👋' : 'Olá, $firstName 👋';
+    return Text(greeting, style: Theme.of(context).textTheme.headlineSmall);
   }
 }
 

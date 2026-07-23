@@ -41,11 +41,13 @@ class _StayTrainingAppState extends ConsumerState<StayTrainingApp> {
     });
 
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeControllerProvider).mode;
     return MaterialApp.router(
       title: 'StayTraining',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

@@ -200,11 +200,37 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         const Divider(height: 32),
                         _apportsSection(),
                       ],
+                      const Divider(height: 32),
+                      _appearanceSection(context),
                     ],
                   ),
                 ),
                   ),
                 ),
+    );
+  }
+
+  Widget _appearanceSection(BuildContext context) {
+    final mode = ref.watch(themeControllerProvider).mode;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text('Aparência', style: Theme.of(context).textTheme.titleMedium),
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<ThemeMode>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: ThemeMode.system, label: Text('Sistema')),
+            ButtonSegment(value: ThemeMode.light, label: Text('Claro')),
+            ButtonSegment(value: ThemeMode.dark, label: Text('Escuro')),
+          ],
+          selected: {mode},
+          onSelectionChanged: (s) => ref.read(themeControllerProvider).setMode(s.first),
+        ),
+      ],
     );
   }
 
