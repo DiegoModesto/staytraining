@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -200,6 +201,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         const Divider(height: 32),
                         _apportsSection(),
                       ],
+                      const Divider(height: 32),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.forum_outlined),
+                        title: const Text('Minhas perguntas'),
+                        subtitle: const Text('Perguntas ao professor e respostas'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.go('/questions'),
+                      ),
                       const Divider(height: 32),
                       _appearanceSection(context),
                     ],

@@ -6,6 +6,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../core/di/providers.dart';
 import '../../core/ui/responsive.dart';
 import '../../models/models.dart';
+import '../questions/ask_question.dart';
 
 class ExerciseDetailScreen extends ConsumerStatefulWidget {
   const ExerciseDetailScreen({super.key, required this.exerciseId});
@@ -28,6 +29,16 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Exercício')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => showAskQuestionDialog(
+          context,
+          ref,
+          exerciseId: widget.exerciseId,
+          targetLabel: 'Sobre este exercício',
+        ),
+        icon: const Icon(Icons.help_outline),
+        label: const Text('Perguntar'),
+      ),
       body: FutureBuilder<Exercise>(
         future: _future,
         builder: (context, snap) {

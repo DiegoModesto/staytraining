@@ -180,4 +180,16 @@ class TrainingApi {
 
   Future<void> removeMyApportment(String apportmentId) =>
       _client.dio.delete('/api/v1/profiles/me/apportments/$apportmentId');
+
+  // ----- Questions to the professor -----
+  Future<String> askQuestion({String? workoutId, String? exerciseId, required String text}) async {
+    final r = await _client.dio.post('/api/v1/questions',
+        data: {'workoutId': workoutId, 'exerciseId': exerciseId, 'text': text});
+    return r.data['id'] as String;
+  }
+
+  Future<List<Question>> listMyQuestions() async {
+    final r = await _client.dio.get('/api/v1/questions/mine');
+    return (r.data as List).map((e) => Question.fromJson(e as Map<String, dynamic>)).toList();
+  }
 }

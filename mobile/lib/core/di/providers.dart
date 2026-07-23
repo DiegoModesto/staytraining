@@ -44,6 +44,11 @@ final pushRegistrationServiceProvider = Provider<PushRegistrationService>(
   (ref) => PushRegistrationService(ref.read(trainingApiProvider)),
 );
 
+/// Perguntas do aluno ao professor (com respostas). `ref.invalidate(myQuestionsProvider)` recarrega.
+final myQuestionsProvider = FutureProvider<List<Question>>(
+  (ref) => ref.read(trainingApiProvider).listMyQuestions(),
+);
+
 /// Perfil do usuário logado, carregado uma vez e mantido em cache (resolve offline via cache HTTP
 /// do ApiClient). Usado, p.ex., para a saudação na home. `ref.invalidate` para forçar recarga.
 final myProfileProvider = FutureProvider<Profile>((ref) async {

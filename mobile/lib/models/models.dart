@@ -434,3 +434,52 @@ class CatalogBodyPart {
             .toList(),
       );
 }
+
+class Question {
+  Question({
+    required this.id,
+    required this.text,
+    required this.createdAt,
+    this.workoutId,
+    this.workoutName,
+    this.exerciseId,
+    this.exerciseName,
+    this.answerText,
+    this.answeredByName,
+    this.answeredAt,
+    this.isAnswered = false,
+  });
+
+  final String id;
+  final String text;
+  final DateTime createdAt;
+  final String? workoutId;
+  final String? workoutName;
+  final String? exerciseId;
+  final String? exerciseName;
+  final String? answerText;
+  final String? answeredByName;
+  final DateTime? answeredAt;
+  final bool isAnswered;
+
+  /// Human-friendly description of what the question is about.
+  String get about => workoutName != null
+      ? 'Treino: $workoutName'
+      : exerciseName != null
+          ? 'Exercício: $exerciseName'
+          : 'Geral';
+
+  factory Question.fromJson(Map<String, dynamic> j) => Question(
+        id: j['id'] as String,
+        text: (j['text'] ?? '') as String,
+        createdAt: DateTime.parse(j['createdAt'] as String),
+        workoutId: j['workoutId'] as String?,
+        workoutName: j['workoutName'] as String?,
+        exerciseId: j['exerciseId'] as String?,
+        exerciseName: j['exerciseName'] as String?,
+        answerText: j['answerText'] as String?,
+        answeredByName: j['answeredByName'] as String?,
+        answeredAt: j['answeredAt'] == null ? null : DateTime.parse(j['answeredAt'] as String),
+        isAnswered: (j['isAnswered'] ?? false) as bool,
+      );
+}

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/di/providers.dart';
 import '../../core/ui/responsive.dart';
 import '../../models/models.dart';
+import '../questions/ask_question.dart';
 
 class WorkoutDetailScreen extends ConsumerStatefulWidget {
   const WorkoutDetailScreen({super.key, required this.workoutId});
@@ -26,7 +27,21 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Treino')),
+      appBar: AppBar(
+        title: const Text('Treino'),
+        actions: [
+          IconButton(
+            tooltip: 'Perguntar ao professor',
+            icon: const Icon(Icons.help_outline),
+            onPressed: () => showAskQuestionDialog(
+              context,
+              ref,
+              workoutId: widget.workoutId,
+              targetLabel: 'Sobre este treino',
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.go('/session/${widget.workoutId}'),
         icon: const Icon(Icons.play_arrow),

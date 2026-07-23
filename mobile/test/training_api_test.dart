@@ -100,4 +100,44 @@ void main() {
       expect(catalog.length, 1);
     });
   });
+
+  test('askQuestion posts the payload and returns the new id', () async {
+    when(() => dio.post(any(), data: any(named: 'data')))
+        .thenAnswer((_) async => _resp('/api/v1/questions', {'id': 'q1'}));
+
+    final id = await api.askQuestion(workoutId: 'w1', text: 'Dúvida');
+
+    expect(id, 'q1');
+    final captured = verify(() => dio.post('/api/v1/questions', data: captureAny(named: 'data')))
+        .captured
+        .single as Map<String, dynamic>;
+    expect(captured['workoutId'], 'w1');
+    expect(captured['exerciseId'], isNull);
+    expect(captured['text'], 'Dúvida');
+  });
+
+  test('listMyQuestions parses questions with answers', () async {
+    when(() => dio.get(any(), queryParameters: any(named: 'queryParameters'))).thenAnswer(
+      (_) async => _resp('/api/v1/questions/mine', [
+        {
+          'id': 'q1',
+          'studentId': 'u1',
+          'studentName': 'Rita',
+          'workoutId': 'w1',
+          'workoutName': 'Treino A',
+          'text': 'Posso trocar?',
+          'createdAt': '2026-07-23T10:00:00Z',
+          'answerText': 'Pode sim',
+          'answeredByName': 'Diego',
+          'answeredAt': '2026-07-23T11:00:00Z',
+          'isAnswered': true,
+        },
+      ]),
+    );
+
+    final result = await api.listMyQuestions();
+    expect(result.single.about, 'Treino: Treino A');
+    expect(result.single.isAnswered, isTrue);
+    expect(result.single.answerText, 'Pode sim');
+  });
 }

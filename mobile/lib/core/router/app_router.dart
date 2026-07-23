@@ -7,6 +7,7 @@ import '../../features/exercises/exercise_detail_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/notes/notes_screen.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/questions/questions_screen.dart';
 import '../../features/reports/weekly_report_screen.dart';
 import '../../features/workouts/workout_builder_screen.dart';
 import '../../features/workouts/workout_detail_screen.dart';
@@ -77,6 +78,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
+              GoRoute(path: '/questions', builder: (c, s) => const QuestionsScreen()),
             ],
           ),
         ],
