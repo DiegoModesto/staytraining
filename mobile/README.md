@@ -79,13 +79,20 @@ lib/
 
 ## FCM push (opcional — não incluído por padrão)
 
-O servidor já envia push (pendência/relatório) via FCM. Para receber no app:
+O servidor já envia push (pendência/relatório) via FCM. **A fiação de registro do token já está pronta**
+(`PushRegistrationService`), atrás da flag `PUSH_ENABLED` e de um `PushTokenProvider` plugável — hoje um
+no-op. Para receber no app:
+
 1. Adicione `firebase_core` e `firebase_messaging` ao `pubspec.yaml`.
 2. Configure o projeto Firebase (`google-services.json` / `GoogleService-Info.plist`).
-3. No boot, pegue o token FCM e chame `TrainingApi.registerDeviceToken(token, platform)`
-   (endpoint `/api/v1/devices/token` já existe).
+3. Implemente `PushTokenProvider` usando `FirebaseMessaging.instance.getToken()` e injete-o no
+   `pushRegistrationServiceProvider` (`lib/core/di/providers.dart`).
+4. Rode com `--dart-define=PUSH_ENABLED=true`.
 
-Sem isso, os **lembretes locais** (treino pendente) continuam funcionando offline.
+O restante já funciona: ao autenticar, o app chama `registerDeviceToken` (endpoint `/api/v1/devices/token`,
+`platform`: Android=0, iOS=1), só re-registrando quando o token muda; ao sair, o cache é resetado.
+
+Sem nada disso, os **lembretes locais** (treino pendente) continuam funcionando offline.
 
 ## Status
 

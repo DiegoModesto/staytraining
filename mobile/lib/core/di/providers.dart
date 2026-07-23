@@ -7,6 +7,7 @@ import '../auth/auth_controller.dart';
 import '../auth/auth_service.dart';
 import '../db/local_store.dart';
 import '../notifications/notification_service.dart';
+import '../notifications/push_registration_service.dart';
 import '../sync/sync_service.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
@@ -30,6 +31,12 @@ final syncServiceProvider = Provider<SyncService>(
 );
 
 final notificationServiceProvider = Provider<NotificationService>((ref) => NotificationService());
+
+/// Registers the device push token with the backend. Uses a no-op token provider until Firebase
+/// is wired in (see [PushRegistrationService]); the whole thing is gated by `PUSH_ENABLED`.
+final pushRegistrationServiceProvider = Provider<PushRegistrationService>(
+  (ref) => PushRegistrationService(ref.read(trainingApiProvider)),
+);
 
 /// Catálogo de exercícios carregado uma vez e mantido em cache: resolve `exerciseId → nome`
 /// (e a modalidade), já que treinos/notas/relatório trazem só o id. `keepAlive` para não recarregar

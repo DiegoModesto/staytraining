@@ -30,6 +30,16 @@ class _StayTrainingAppState extends ConsumerState<StayTrainingApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Register / clear the device push token as auth state flips (no-op until PUSH_ENABLED + Firebase).
+    ref.listen(authControllerProvider, (_, next) {
+      final push = ref.read(pushRegistrationServiceProvider);
+      if (next.isAuthenticated) {
+        push.register();
+      } else {
+        push.reset();
+      }
+    });
+
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
       title: 'StayTraining',

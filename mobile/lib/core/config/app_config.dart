@@ -22,4 +22,10 @@ class AppConfig {
 
   /// Days without doing a scheduled workout before the local "pending" reminder fires.
   static const int pendingWorkoutDays = 3;
+
+  /// Enables server-side push: when true (and a `PushTokenProvider` yields a token) the app
+  /// registers its device token with the backend. Off by default until Firebase is wired in.
+  ///   flutter run --dart-define=PUSH_ENABLED=true
+  static const bool pushEnabled =
+      bool.fromEnvironment('PUSH_ENABLED', defaultValue: false);
 }
