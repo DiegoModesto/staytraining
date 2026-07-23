@@ -5,6 +5,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/di/providers.dart';
+import '../../core/ui/responsive.dart';
 import '../../models/models.dart';
 
 /// "Meu perfil" / ficha do aluno — view + edit personal data, profile photo (pick + crop) and,
@@ -150,7 +151,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text('Falha ao carregar: $_error'))
-              : RefreshIndicator(
+              : Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: Breakpoints.contentMaxWidth),
+                    child: RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(
                     padding: const EdgeInsets.all(16),
@@ -197,6 +201,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         _apportsSection(),
                       ],
                     ],
+                  ),
+                ),
                   ),
                 ),
     );

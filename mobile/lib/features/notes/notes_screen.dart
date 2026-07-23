@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/di/providers.dart';
+import '../../core/ui/responsive.dart';
+import '../../models/models.dart';
 
 class NotesScreen extends ConsumerStatefulWidget {
   const NotesScreen({super.key});
@@ -12,7 +14,7 @@ class NotesScreen extends ConsumerStatefulWidget {
 }
 
 class _NotesScreenState extends ConsumerState<NotesScreen> {
-  late Future<List<Map<String, dynamic>>> _future;
+  late Future<List<SessionNote>> _future;
   static final _fmt = DateFormat('dd/MM/yyyy');
 
   @override
@@ -23,9 +25,10 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final catalog = ref.watch(exerciseCatalogProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Anotações')),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
+      body: FutureBuilder<List<SessionNote>>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
@@ -39,42 +42,59 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             return const Center(child: Text('Nenhuma anotação ainda.'));
           }
 
-          // Group by session date.
-          final groups = <String, List<Map<String, dynamic>>>{};
+          // Group by session date (newest groups first, as the API returns newest-first).
+          final groups = <String, List<SessionNote>>{};
           for (final n in notes) {
-            final date = DateTime.tryParse(n['sessionDate'] as String? ?? '') ?? DateTime.now();
-            groups.putIfAbsent(_fmt.format(date), () => []).add(n);
+            groups.putIfAbsent(_fmt.format(n.sessionDate), () => []).add(n);
           }
 
-          return ListView(
-            padding: const EdgeInsets.all(12),
-            children: groups.entries.map((g) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(g.key, style: Theme.of(context).textTheme.titleMedium),
-                  ),
-                  ...g.value.map((n) {
-                    final load = n['loadKg'];
-                    final pain = n['painFlag'] == true;
-                    final comment = n['comment'] as String?;
-                    return Card(
-                      child: ListTile(
-                        leading: Icon(pain ? Icons.warning_amber : Icons.check_circle_outline,
-                            color: pain ? Colors.orange : Colors.green),
-                        title: Text([
-                          if (load != null) 'Carga: ${load}kg',
-                          if (n['performedSets'] != null) '${n['performedSets']}x${n['performedReps'] ?? '?'}',
-                        ].join(' • ')),
-                        subtitle: comment == null ? null : Text(comment),
-                      ),
-                    );
-                  }),
-                ],
+          String nameFor(String id) => catalog.maybeWhen(
+                data: (c) => c.nameFor(id),
+                orElse: () => 'Exercício',
               );
-            }).toList(),
+
+          return ListView(
+            children: [
+              AdaptiveContainer(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: groups.entries.map((g) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(g.key, style: Theme.of(context).textTheme.titleMedium),
+                        ),
+                        ...g.value.map((n) {
+                          final metrics = [
+                            if (n.loadKg != null) 'Carga: ${n.loadKg!.toStringAsFixed(n.loadKg! % 1 == 0 ? 0 : 1)} kg',
+                            if (n.performedSets != null) '${n.performedSets}×${n.performedReps ?? '?'}',
+                          ].join(' • ');
+                          return Card(
+                            child: ListTile(
+                              leading: Icon(n.painFlag ? Icons.warning_amber : Icons.check_circle_outline,
+                                  color: n.painFlag ? Colors.orange : Colors.green),
+                              title: Text(nameFor(n.exerciseId)),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (metrics.isNotEmpty) Text(metrics),
+                                  if (n.comment != null && n.comment!.isNotEmpty) Text(n.comment!),
+                                  if (n.painFlag && (n.painNote?.isNotEmpty ?? false))
+                                    Text('Dor: ${n.painNote}', style: const TextStyle(color: Colors.orange)),
+                                ],
+                              ),
+                              isThreeLine: n.comment != null,
+                            ),
+                          );
+                        }),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
           );
         },
       ),

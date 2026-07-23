@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/di/providers.dart';
+import '../../core/ui/responsive.dart';
 import '../../models/models.dart';
 
 class WorkoutDetailScreen extends ConsumerStatefulWidget {
@@ -41,24 +42,33 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
             return Center(child: Text('Falha ao carregar: ${snap.error}'));
           }
           final w = snap.data!;
+          final catalog = ref.watch(exerciseCatalogProvider);
+          String nameFor(String id) => catalog.maybeWhen(data: (c) => c.nameFor(id), orElse: () => 'Exercício');
+
           final sections = <String, List<WorkoutItem>>{};
           for (final it in w.items) {
             sections.putIfAbsent(it.sectionLabel ?? 'Exercícios', () => []).add(it);
           }
 
           return ListView(
-            padding: const EdgeInsets.all(12),
             children: [
-              Text(w.name, style: Theme.of(context).textTheme.headlineSmall),
-              if (w.description != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(w.description!)),
-              const SizedBox(height: 12),
-              for (final entry in sections.entries) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(entry.key, style: Theme.of(context).textTheme.titleMedium),
+              AdaptiveContainer(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(w.name, style: Theme.of(context).textTheme.headlineSmall),
+                    if (w.description != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(w.description!)),
+                    const SizedBox(height: 12),
+                    for (final entry in sections.entries) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(entry.key, style: Theme.of(context).textTheme.titleMedium),
+                      ),
+                      ...entry.value.map((it) => _ItemCard(item: it, name: nameFor(it.exerciseId))),
+                    ],
+                  ],
                 ),
-                ...entry.value.map((it) => _ItemCard(item: it)),
-              ],
+              ),
             ],
           );
         },
@@ -68,8 +78,9 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
 }
 
 class _ItemCard extends StatelessWidget {
-  const _ItemCard({required this.item});
+  const _ItemCard({required this.item, required this.name});
   final WorkoutItem item;
+  final String name;
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +90,7 @@ class _ItemCard extends StatelessWidget {
 
     return Card(
       child: ListTile(
-        title: Text('Exercício ${item.order}'),
+        title: Text('${item.order}. $name'),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

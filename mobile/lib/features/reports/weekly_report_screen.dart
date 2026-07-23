@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/providers.dart';
+import '../../core/ui/responsive.dart';
 import '../../core/util/dates.dart';
 import '../../models/models.dart';
 
@@ -35,32 +36,41 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
             return Center(child: Text('Falha: ${snap.error}'));
           }
           final r = snap.data!;
+          final catalog = ref.watch(exerciseCatalogProvider);
+          String nameFor(String id) => catalog.maybeWhen(data: (c) => c.nameFor(id), orElse: () => 'Exercício');
+
           return ListView(
-            padding: const EdgeInsets.all(16),
             children: [
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _stat(context, 'Sessões', '${r.sessionCount}'),
-                  _stat(context, 'Concluídas', '${r.completedSessionCount}'),
-                  _stat(context, 'Treinos', '${r.distinctWorkoutCount}'),
-                  _stat(context, 'Nota média', r.averageRating == null ? '-' : r.averageRating!.toStringAsFixed(1)),
-                ],
+              AdaptiveContainer(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        _stat(context, 'Sessões', '${r.sessionCount}'),
+                        _stat(context, 'Concluídas', '${r.completedSessionCount}'),
+                        _stat(context, 'Treinos', '${r.distinctWorkoutCount}'),
+                        _stat(context, 'Nota média', r.averageRating == null ? '-' : r.averageRating!.toStringAsFixed(1)),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text('Por exercício', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 8),
+                    if (r.exercises.isEmpty)
+                      const Text('Nenhum exercício executado nesta semana.')
+                    else
+                      ...r.exercises.map((e) => Card(
+                            child: ListTile(
+                              title: Text(nameFor(e.exerciseId)),
+                              subtitle: Text('${e.timesPerformed}x • ${e.totalSets} séries • ${e.totalReps} reps'),
+                              trailing: e.maxLoadKg == null ? null : Text('${e.maxLoadKg!.toStringAsFixed(e.maxLoadKg! % 1 == 0 ? 0 : 1)} kg'),
+                            ),
+                          )),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              Text('Por exercício', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              if (r.exercises.isEmpty)
-                const Text('Nenhum exercício executado nesta semana.')
-              else
-                ...r.exercises.map((e) => Card(
-                      child: ListTile(
-                        title: Text('Exercício ${e.exerciseId.substring(0, 8)}…'),
-                        subtitle: Text('${e.timesPerformed}x • ${e.totalSets} séries • ${e.totalReps} reps'),
-                        trailing: e.maxLoadKg == null ? null : Text('${e.maxLoadKg}kg'),
-                      ),
-                    )),
             ],
           );
         },

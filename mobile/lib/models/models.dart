@@ -189,6 +189,86 @@ class WorkoutListItem {
       );
 }
 
+class WorkoutTemplateListItem {
+  WorkoutTemplateListItem({
+    required this.id,
+    required this.name,
+    this.modalityName,
+    required this.isSystemDefault,
+    required this.itemCount,
+  });
+  final String id;
+  final String name;
+  final String? modalityName;
+  final bool isSystemDefault;
+  final int itemCount;
+
+  factory WorkoutTemplateListItem.fromJson(Map<String, dynamic> j) => WorkoutTemplateListItem(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        modalityName: j['modalityName'] as String?,
+        isSystemDefault: (j['isSystemDefault'] as bool?) ?? false,
+        itemCount: (j['itemCount'] as int?) ?? 0,
+      );
+}
+
+class Modality {
+  Modality({required this.id, required this.name, required this.colorHex, required this.isIntervalBased});
+  final String id;
+  final String name;
+  final String colorHex;
+  final bool isIntervalBased;
+
+  factory Modality.fromJson(Map<String, dynamic> j) => Modality(
+        id: j['id'] as String,
+        name: (j['name'] ?? '') as String,
+        colorHex: (j['colorHex'] ?? '#9AA4B2') as String,
+        isIntervalBased: (j['isIntervalBased'] as bool?) ?? false,
+      );
+}
+
+/// Nota de execução (o que o aluno registrou numa sessão).
+class SessionNote {
+  SessionNote({
+    required this.id,
+    required this.sessionId,
+    required this.sessionDate,
+    required this.workoutItemId,
+    required this.exerciseId,
+    this.loadKg,
+    required this.painFlag,
+    this.painNote,
+    this.comment,
+    this.performedSets,
+    this.performedReps,
+  });
+  final String id;
+  final String sessionId;
+  final DateTime sessionDate;
+  final String workoutItemId;
+  final String exerciseId;
+  final double? loadKg;
+  final bool painFlag;
+  final String? painNote;
+  final String? comment;
+  final int? performedSets;
+  final int? performedReps;
+
+  factory SessionNote.fromJson(Map<String, dynamic> j) => SessionNote(
+        id: j['id'] as String,
+        sessionId: (j['sessionId'] ?? '') as String,
+        sessionDate: DateTime.tryParse((j['sessionDate'] ?? '') as String)?.toLocal() ?? DateTime.now(),
+        workoutItemId: (j['workoutItemId'] ?? '') as String,
+        exerciseId: (j['exerciseId'] ?? '') as String,
+        loadKg: (j['loadKg'] as num?)?.toDouble(),
+        painFlag: (j['painFlag'] as bool?) ?? false,
+        painNote: j['painNote'] as String?,
+        comment: j['comment'] as String?,
+        performedSets: j['performedSets'] as int?,
+        performedReps: j['performedReps'] as int?,
+      );
+}
+
 class WeekScheduleItem {
   WeekScheduleItem({required this.scheduleId, required this.date, required this.workoutId, required this.workoutName});
   final String scheduleId;

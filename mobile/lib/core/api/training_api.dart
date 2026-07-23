@@ -28,11 +28,16 @@ class TrainingApi {
     return Exercise.fromJson(r.data);
   }
 
+  Future<List<Modality>> listModalities() async {
+    final r = await _client.dio.get('/api/v1/modalities');
+    return (r.data as List).map((e) => Modality.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   // ----- Templates -----
-  Future<List<Map<String, dynamic>>> listTemplates({bool? onlySystemDefaults}) async {
+  Future<List<WorkoutTemplateListItem>> listTemplates({bool? onlySystemDefaults}) async {
     final r = await _client.dio.get('/api/v1/workout-templates',
         queryParameters: onlySystemDefaults == null ? null : {'onlySystemDefaults': onlySystemDefaults});
-    return (r.data as List).cast<Map<String, dynamic>>();
+    return (r.data as List).map((e) => WorkoutTemplateListItem.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   // ----- Workouts -----
@@ -66,6 +71,12 @@ class TrainingApi {
   Future<void> removeWorkoutItem(String workoutId, String itemId) =>
       _client.dio.delete('/api/v1/workouts/$workoutId/items/$itemId');
 
+  Future<void> renameWorkout(String workoutId, String name) =>
+      _client.dio.put('/api/v1/workouts/$workoutId/name', data: {'name': name});
+
+  Future<void> deleteWorkout(String workoutId) =>
+      _client.dio.delete('/api/v1/workouts/$workoutId');
+
   // ----- Schedule -----
   Future<List<WeekScheduleItem>> getWeek(DateTime weekStart) async {
     final r = await _client.dio.get('/api/v1/schedule/week',
@@ -92,10 +103,15 @@ class TrainingApi {
       _client.dio.post('/api/v1/sessions/$sessionId/complete',
           data: {'completionRating': rating, 'overallComment': comment});
 
-  Future<List<Map<String, dynamic>>> getAllNotes({String? exerciseId}) async {
+  Future<List<SessionNote>> getAllNotes({String? exerciseId}) async {
     final r = await _client.dio.get('/api/v1/notes',
         queryParameters: exerciseId == null ? null : {'exerciseId': exerciseId});
-    return (r.data as List).cast<Map<String, dynamic>>();
+    return (r.data as List).map((e) => SessionNote.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<SessionNote>> getSessionNotes(String sessionId) async {
+    final r = await _client.dio.get('/api/v1/sessions/$sessionId/notes');
+    return (r.data as List).map((e) => SessionNote.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<WeeklyReport> getWeeklyReport(DateTime weekStart) async {

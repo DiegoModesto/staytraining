@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import '../../core/di/providers.dart';
+import '../../core/ui/responsive.dart';
 import '../../models/models.dart';
 
 class ExerciseDetailScreen extends ConsumerStatefulWidget {
@@ -38,8 +39,11 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
           }
           final e = snap.data!;
           return ListView(
-            padding: const EdgeInsets.all(16),
             children: [
+              AdaptiveContainer(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
               Text(e.name, style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 4),
               Chip(label: Text(e.modalityName)),
@@ -60,6 +64,9 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
               Text(e.isAerobic
                   ? '${e.defaultWorkSeconds ?? 0}s / ${e.defaultIntervalRestSeconds ?? 0}s × ${e.defaultRounds ?? 0}'
                   : '${e.defaultSets} × ${e.defaultReps} • descanso ${e.defaultRestSeconds}s'),
+                  ],
+                ),
+              ),
             ],
           );
         },

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/di/providers.dart';
+import '../../core/ui/responsive.dart';
 import '../../core/util/ids.dart';
 import '../../models/models.dart';
 import 'interval_timer_widget.dart';
@@ -147,25 +148,37 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
   Widget _buildBody() {
     final w = _workout!;
     return ListView(
-      padding: const EdgeInsets.all(12),
       children: [
-        Text(w.name, style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 8),
-        ...w.items.map(_buildItem),
+        AdaptiveContainer(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(w.name, style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              ...w.items.map(_buildItem),
+            ],
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildItem(WorkoutItem item) {
     final d = _drafts[item.id]!;
+    final name = ref.watch(exerciseCatalogProvider).maybeWhen(
+          data: (c) => c.nameFor(item.exerciseId),
+          orElse: () => 'Exercício ${item.order}',
+        );
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(item.sectionLabel ?? 'Exercício ${item.order}',
-                style: Theme.of(context).textTheme.titleMedium),
+            if (item.sectionLabel != null && item.sectionLabel!.isNotEmpty)
+              Text(item.sectionLabel!.toUpperCase(),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 1)),
+            Text(name, style: Theme.of(context).textTheme.titleMedium),
             if (item.professorComment != null && item.professorComment!.isNotEmpty)
               Text(item.professorComment!, style: const TextStyle(fontStyle: FontStyle.italic)),
             const SizedBox(height: 8),

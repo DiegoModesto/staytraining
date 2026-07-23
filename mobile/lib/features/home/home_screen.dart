@@ -28,9 +28,68 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _week = ref.read(trainingApiProvider).getWeek(startOfWeek(DateTime.now()));
       });
 
+  Future<void> _scheduleWorkout() async {
+    final api = ref.read(trainingApiProvider);
+    List<WorkoutListItem> workouts;
+    try {
+      workouts = await api.listWorkouts();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Falha ao carregar treinos: $e')));
+      return;
+    }
+    if (!mounted) return;
+    if (workouts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Você ainda não tem treinos para agendar.')));
+      return;
+    }
+
+    final workout = await showModalBottomSheet<WorkoutListItem>(
+      context: context,
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: workouts
+              .map((w) => ListTile(
+                    leading: const Icon(Icons.fitness_center),
+                    title: Text(w.name),
+                    subtitle: Text('${w.itemCount} exercícios'),
+                    onTap: () => Navigator.pop(c, w),
+                  ))
+              .toList(),
+        ),
+      ),
+    );
+    if (workout == null || !mounted) return;
+
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now.subtract(const Duration(days: 7)),
+      lastDate: now.add(const Duration(days: 365)),
+      helpText: 'Agendar "${workout.name}"',
+    );
+    if (date == null) return;
+
+    try {
+      await api.scheduleWorkout(workout.id, date);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Treino agendado.')));
+      _reload();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Falha ao agendar: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _scheduleWorkout,
+        icon: const Icon(Icons.event_available),
+        label: const Text('Agendar'),
+      ),
       appBar: AppBar(
         title: const Text('StayTraining'),
         actions: [

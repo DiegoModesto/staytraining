@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/di/providers.dart';
+import '../../core/ui/responsive.dart';
 import '../../models/models.dart';
 
 class WorkoutsScreen extends ConsumerStatefulWidget {
@@ -28,24 +29,29 @@ class _WorkoutsScreenState extends ConsumerState<WorkoutsScreen> {
     final templates = await api.listTemplates();
     if (!mounted) return;
 
-    final chosen = await showModalBottomSheet<Map<String, dynamic>>(
+    final chosen = await showModalBottomSheet<WorkoutTemplateListItem>(
       context: context,
-      builder: (c) => ListView(
-        children: templates
-            .map((t) => ListTile(
-                  leading: const Icon(Icons.list_alt),
-                  title: Text(t['name'] as String),
-                  subtitle: Text('${t['itemCount']} exercícios${(t['isSystemDefault'] == true) ? ' • padrão' : ''}'),
-                  onTap: () => Navigator.pop(c, t),
-                ))
-            .toList(),
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: templates
+              .map((t) => ListTile(
+                    leading: const Icon(Icons.list_alt),
+                    title: Text(t.name),
+                    subtitle: Text('${t.itemCount} exercícios${t.isSystemDefault ? ' • padrão' : ''}'
+                        '${t.modalityName != null ? ' • ${t.modalityName!}' : ''}'),
+                    onTap: () => Navigator.pop(c, t),
+                  ))
+              .toList(),
+        ),
       ),
     );
     if (chosen == null) return;
 
     try {
       // Empty owner id => the API assigns the workout to the current user (student self-service).
-      await api.createWorkoutFromTemplate(chosen['id'] as String, _emptyGuid);
+      await api.createWorkoutFromTemplate(chosen.id, _emptyGuid);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Treino criado a partir do modelo.')));
       _reload();
@@ -79,21 +85,29 @@ class _WorkoutsScreenState extends ConsumerState<WorkoutsScreen> {
           if (items.isEmpty) {
             return const Center(child: Text('Nenhum treino ainda. Crie um a partir de um modelo.'));
           }
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: items.length,
-            itemBuilder: (context, i) {
-              final w = items[i];
-              return Card(
-                child: ListTile(
-                  leading: const Icon(Icons.fitness_center),
-                  title: Text(w.name),
-                  subtitle: Text('${w.itemCount} exercícios${w.modalityName != null ? ' • ${w.modalityName!}' : ''}'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.go('/workouts/${w.id}'),
+          return RefreshIndicator(
+            onRefresh: () async => _reload(),
+            child: ListView(
+              children: [
+                AdaptiveContainer(
+                  child: AdaptiveCardGrid(
+                    children: [
+                      for (final w in items)
+                        Card(
+                          margin: EdgeInsets.zero,
+                          child: ListTile(
+                            leading: const Icon(Icons.fitness_center),
+                            title: Text(w.name),
+                            subtitle: Text('${w.itemCount} exercícios${w.modalityName != null ? ' • ${w.modalityName!}' : ''}'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => context.go('/workouts/${w.id}'),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              );
-            },
+              ],
+            ),
           );
         },
       ),
