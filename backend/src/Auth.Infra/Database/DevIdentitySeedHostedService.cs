@@ -1,4 +1,5 @@
 using Auth.Application.Abstractions.Data;
+using Auth.Application.Abstractions.Identity;
 using Auth.Domain.Roles;
 using Auth.Domain.Tenants;
 using Auth.Domain.Users;
@@ -30,6 +31,7 @@ internal sealed class DevIdentitySeedHostedService(
     {
         using IServiceScope scope = scopeFactory.CreateScope();
         IAuthDbContext db = scope.ServiceProvider.GetRequiredService<IAuthDbContext>();
+        var hasher = scope.ServiceProvider.GetRequiredService<IUserPasswordHasher>();
 
         await EnsureTenantAsync(db, cancellationToken);
 
@@ -39,7 +41,7 @@ internal sealed class DevIdentitySeedHostedService(
         foreach (DevIdentityDefaults.DevUser mock in DevIdentityDefaults.All)
         {
             Guid roleId = await EnsureRoleAsync(db, mock, permissionIdByCode, cancellationToken);
-            await EnsureUserAsync(db, mock, roleId, cancellationToken);
+            await EnsureUserAsync(db, mock, roleId, hasher, cancellationToken);
         }
 
         logger.LogInformation(
@@ -119,11 +121,20 @@ internal sealed class DevIdentitySeedHostedService(
         IAuthDbContext db,
         DevIdentityDefaults.DevUser mock,
         Guid roleId,
+        IUserPasswordHasher hasher,
         CancellationToken ct)
     {
-        bool exists = await db.Users.AnyAsync(u => u.Id == mock.UserId, ct);
-        if (exists)
+        User? existing = await db.Users.FirstOrDefaultAsync(u => u.Id == mock.UserId, ct);
+        if (existing is not null)
         {
+            // Reconcile: older seeds created dev users without a local password. Set it so the
+            // mobile app's email+password (password grant) login works WITHOUT wiping auth_db.
+            if (string.IsNullOrEmpty(existing.PasswordHash))
+            {
+                existing.SetPasswordHash(hasher.Hash(DevIdentityDefaults.DevPassword));
+                await db.SaveChangesAsync(ct);
+            }
+
             return;
         }
 
@@ -131,6 +142,7 @@ internal sealed class DevIdentitySeedHostedService(
             DevIdentityDefaults.TenantId, mock.EntraOid, mock.Email, mock.DisplayName);
         ForceId(user, mock.UserId);
         user.AssignRole(roleId);
+        user.SetPasswordHash(hasher.Hash(DevIdentityDefaults.DevPassword));
 
         db.Users.Add(user);
         await db.SaveChangesAsync(ct);   // reconciles user_roles join rows

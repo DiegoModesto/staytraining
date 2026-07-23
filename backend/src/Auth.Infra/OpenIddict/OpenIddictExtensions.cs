@@ -48,7 +48,8 @@ public static class OpenIddictExtensions
 
                 o.AllowAuthorizationCodeFlow().RequireProofKeyForCodeExchange()
                  .AllowRefreshTokenFlow()
-                 .AllowClientCredentialsFlow();
+                 .AllowClientCredentialsFlow()
+                 .AllowPasswordFlow();
 
                 o.RegisterScopes(
                     OpenIddictConstants.Scopes.OpenId,

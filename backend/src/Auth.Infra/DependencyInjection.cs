@@ -63,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<ITenantContext, TenantContext>();
         services.AddScoped<IPermissionResolver, PermissionResolver>();
         services.AddSingleton<IClientSecretHasher, Pbkdf2ClientSecretHasher>();
+        services.AddSingleton<IUserPasswordHasher, Pbkdf2UserPasswordHasher>();
 
         services.Configure<Auth.Infra.NetSuite.NetSuiteSamlOptions>(
             configuration.GetSection(Auth.Infra.NetSuite.NetSuiteSamlOptions.SectionName));

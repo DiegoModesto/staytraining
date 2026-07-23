@@ -7,8 +7,10 @@ using Auth.Application.Abstractions.Identity;
 using Auth.Application.Abstractions.Messaging;
 using Auth.Application.M2MClients.Authenticate;
 using Auth.Domain.Audit;
+using Auth.Domain.Users;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 
@@ -30,6 +32,7 @@ internal sealed class TokenEndpoint : IEndpoint
         HttpContext http,
         ICommandHandler<AuthenticateM2MClientCommand, M2MClientAuthenticated> authenticateM2M,
         IPermissionResolver permissions,
+        IUserPasswordHasher passwordHasher,
         IAuthDbContext db,
         CancellationToken ct)
     {
@@ -130,6 +133,86 @@ internal sealed class TokenEndpoint : IEndpoint
                 ip,
                 userAgent,
                 detail: JsonSerializer.Serialize(new { client_id = request.ClientId })));
+            await db.SaveChangesAsync(ct);
+
+            return Results.SignIn(
+                principal,
+                authenticationScheme: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        }
+
+        if (request.IsPasswordGrantType())
+        {
+            using Activity? activity = AuthActivitySource.Instance.StartActivity("TokenPassword");
+
+            string ip = Truncate(http.Connection.RemoteIpAddress?.ToString() ?? string.Empty, MaxIpLength);
+            string userAgent = Truncate(http.Request.Headers.UserAgent.ToString(), MaxUserAgentLength);
+
+            string email = (request.Username ?? string.Empty).Trim().ToLowerInvariant();
+            string password = request.Password ?? string.Empty;
+
+            User? user = string.IsNullOrEmpty(email)
+                ? null
+                : await db.Users.FirstOrDefaultAsync(
+                    u => u.Email.ToLower() == email && u.IsActive && u.PasswordHash != null, ct);
+
+            if (user is null || !passwordHasher.Verify(password, user.PasswordHash!))
+            {
+                db.AuditEvents.Add(AuthAuditEvent.Record(
+                    user?.TenantId ?? Guid.Empty, user?.Id,
+                    AuthAuditEventType.LoginFailed, ip, userAgent,
+                    JsonSerializer.Serialize(new { reason = "invalid_credentials", email })));
+                await db.SaveChangesAsync(ct);
+
+                return Results.Json(
+                    new OpenIddictResponse
+                    {
+                        Error = OpenIddictConstants.Errors.InvalidGrant,
+                        ErrorDescription = "E-mail ou senha inválidos.",
+                    },
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            activity?.SetTag("tenant.id", user.TenantId);
+            activity?.SetTag("user.id", user.Id);
+
+            var permsR = await permissions.ResolveAsync(user.TenantId, user.Id, ct);
+            IReadOnlyCollection<string> perms = permsR.IsSuccess ? permsR.Value : [];
+
+            var identity = new ClaimsIdentity(
+                OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                OpenIddictConstants.Claims.Name,
+                OpenIddictConstants.Claims.Role);
+
+            identity.AddClaim(new Claim(OpenIddictConstants.Claims.Subject, user.Id.ToString()));
+            identity.AddClaim(new Claim("tenant_id", user.TenantId.ToString()));
+            identity.AddClaim(new Claim(OpenIddictConstants.Claims.Email, user.Email));
+            identity.AddClaim(new Claim(OpenIddictConstants.Claims.Name, user.DisplayName));
+            foreach (string p in perms)
+            {
+                identity.AddClaim(new Claim("permission", p));
+            }
+
+            foreach (Claim claim in identity.Claims)
+            {
+                claim.SetDestinations(
+                    OpenIddictConstants.Destinations.AccessToken,
+                    OpenIddictConstants.Destinations.IdentityToken);
+            }
+
+            var principal = new ClaimsPrincipal(identity);
+            System.Collections.Immutable.ImmutableArray<string> scopes = request.GetScopes();
+            principal.SetScopes(scopes);
+
+            // Same audience/resource union as AuthorizeEndpoint so the token validates at the
+            // resource servers AND introspects as active.
+            if (scopes.Contains("api:web"))
+            {
+                principal.SetResources("api:web", "api:auth", "web-api", "gateway");
+            }
+
+            db.AuditEvents.Add(AuthAuditEvent.Record(
+                user.TenantId, user.Id, AuthAuditEventType.LoginSucceeded, ip, userAgent,
+                JsonSerializer.Serialize(new { email = user.Email, grant = "password" })));
             await db.SaveChangesAsync(ct);
 
             return Results.SignIn(

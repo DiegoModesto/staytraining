@@ -19,6 +19,7 @@ internal sealed class UserConfiguration : AbstractAuthConfiguration<User>
         builder.Property(u => u.Email).HasMaxLength(320).IsRequired();
         builder.Property(u => u.DisplayName).HasMaxLength(200).IsRequired();
         builder.Property(u => u.NetSuiteEmail).HasMaxLength(320);
+        builder.Property(u => u.PasswordHash).HasMaxLength(200);
         builder.Property(u => u.IsActive).IsRequired();
         builder.Property(u => u.IsPreProvisioned).IsRequired();
 

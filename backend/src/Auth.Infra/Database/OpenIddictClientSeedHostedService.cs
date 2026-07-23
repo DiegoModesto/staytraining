@@ -75,7 +75,21 @@ internal sealed class OpenIddictClientSeedHostedService(
         object? existing = await manager.FindByClientIdAsync(clientId, ct);
         if (existing is not null)
         {
-            logger.LogDebug("OpenIddict application '{ClientId}' already exists; skipping seed.", clientId);
+            // Reconcile: ensure the password grant permission is present on clients seeded before
+            // it was added, so email+password login works WITHOUT wiping auth_db.
+            var current = new OpenIddictApplicationDescriptor();
+            await manager.PopulateAsync(current, existing, ct);
+
+            string passwordPermission = OpenIddictConstants.Permissions.GrantTypes.Password;
+            if (!current.Permissions.Contains(passwordPermission))
+            {
+                current.Permissions.Add(passwordPermission);
+                await manager.UpdateAsync(existing, current, ct);
+                logger.LogInformation(
+                    "Reconciled OpenIddict application '{ClientId}': added the password grant permission.",
+                    clientId);
+            }
+
             return;
         }
 
@@ -96,6 +110,7 @@ internal sealed class OpenIddictClientSeedHostedService(
                 OpenIddictConstants.Permissions.Endpoints.EndSession,
                 OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
                 OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                OpenIddictConstants.Permissions.GrantTypes.Password,
                 OpenIddictConstants.Permissions.ResponseTypes.Code,
                 OpenIddictConstants.Permissions.Scopes.Email,
                 OpenIddictConstants.Permissions.Scopes.Profile,

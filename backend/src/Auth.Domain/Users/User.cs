@@ -17,6 +17,10 @@ public sealed class User : Entity
     public string Email { get; private set; } = string.Empty;
     public string DisplayName { get; private set; } = string.Empty;
     public string? NetSuiteEmail { get; private set; }
+
+    /// <summary>PBKDF2 hash of the local password. Null for Entra-federated users (no local login).</summary>
+    public string? PasswordHash { get; private set; }
+
     public bool IsActive { get; private set; }
     public bool IsPreProvisioned { get; private set; }
     public DateTimeOffset? LastLoginAt { get; private set; }
@@ -67,6 +71,9 @@ public sealed class User : Entity
     public void Enable() => IsActive = true;
 
     public void SetNetSuiteEmail(string? netSuiteEmail) => NetSuiteEmail = netSuiteEmail;
+
+    /// <summary>Sets (or clears) the local password hash. Enables the password grant for this user.</summary>
+    public void SetPasswordHash(string? passwordHash) => PasswordHash = passwordHash;
 
     public void RecordLogin() => LastLoginAt = DateTimeOffset.UtcNow;
 
