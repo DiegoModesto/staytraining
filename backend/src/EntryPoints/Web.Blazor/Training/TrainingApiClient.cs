@@ -23,6 +23,15 @@ internal sealed class TrainingApiClient(
     public Task<IReadOnlyList<MuscleGroupDto>> ListMuscleGroupsAsync(CancellationToken ct)
         => GetListAsync<MuscleGroupDto>($"{Base}/muscle-groups", ct);
 
+    public async Task<Guid> CreateMuscleGroupAsync(CreateMuscleGroupRequest request, CancellationToken ct)
+        => (await PostAsync<CreateMuscleGroupRequest, IdResponse>($"{Base}/muscle-groups", request, ct)).Id;
+
+    public Task UpdateMuscleGroupAsync(Guid id, UpdateMuscleGroupRequest request, CancellationToken ct)
+        => SendWithBodyAsync(HttpMethod.Put, $"{Base}/muscle-groups/{id}", request, ct);
+
+    public Task DeleteMuscleGroupAsync(Guid id, CancellationToken ct)
+        => SendNoBodyAsync(HttpMethod.Delete, $"{Base}/muscle-groups/{id}", ct);
+
     public Task<IReadOnlyList<ModalityDto>> ListModalitiesAsync(CancellationToken ct)
         => GetListAsync<ModalityDto>($"{Base}/modalities", ct);
 

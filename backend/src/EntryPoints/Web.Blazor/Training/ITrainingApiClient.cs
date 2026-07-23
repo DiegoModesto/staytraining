@@ -4,6 +4,9 @@ namespace Web.Blazor.Training;
 public interface ITrainingApiClient
 {
     Task<IReadOnlyList<MuscleGroupDto>> ListMuscleGroupsAsync(CancellationToken ct);
+    Task<Guid> CreateMuscleGroupAsync(CreateMuscleGroupRequest request, CancellationToken ct);
+    Task UpdateMuscleGroupAsync(Guid id, UpdateMuscleGroupRequest request, CancellationToken ct);
+    Task DeleteMuscleGroupAsync(Guid id, CancellationToken ct);
 
     // Modalities (admin-managed catalog)
     Task<IReadOnlyList<ModalityDto>> ListModalitiesAsync(CancellationToken ct);

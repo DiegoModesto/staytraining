@@ -16,7 +16,14 @@
     </PermissionView>
 
     <PermissionView Permission="modality.write">
+        <MudDivider Class="my-2" />
+        <MudText Class="px-4 py-2" Typo="Typo.overline">Configurações</MudText>
+
         <MudNavLink Href="/admin/modalities" Icon="@Icons.Material.Filled.Category">Modalidades</MudNavLink>
+    </PermissionView>
+
+    <PermissionView Permission="muscle.write">
+        <MudNavLink Href="/admin/muscles" Icon="@Icons.Material.Filled.FitnessCenter">Músculos</MudNavLink>
     </PermissionView>
 
     <MudDivider Class="my-2" />

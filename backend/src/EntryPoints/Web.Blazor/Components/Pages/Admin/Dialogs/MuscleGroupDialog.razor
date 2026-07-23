@@ -1,0 +1,46 @@
+@using Web.Blazor.Training
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_name" Label="Nome" Required Immediate MaxLength="100" Class="mb-3" />
+        <MudTextField @bind-Value="_bodyRegion" Label="Região do corpo" Required Immediate MaxLength="100"
+                      HelperText="Ex.: Superiores, Inferiores, Core" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialog.Cancel())">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    /// <summary>Existing muscle group to edit; null to create a new one.</summary>
+    [Parameter] public MuscleGroupDto? Muscle { get; set; }
+
+    private string _name = string.Empty;
+    private string _bodyRegion = string.Empty;
+    private bool _busy;
+
+    protected override void OnInitialized()
+    {
+        if (Muscle is not null)
+        {
+            _name = Muscle.Name;
+            _bodyRegion = Muscle.BodyRegion;
+        }
+    }
+
+    private void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_bodyRegion))
+        {
+            return;
+        }
+
+        _busy = true;
+        Dialog.Close(DialogResult.Ok(new Result(_name.Trim(), _bodyRegion.Trim())));
+    }
+
+    public sealed record Result(string Name, string BodyRegion);
+}

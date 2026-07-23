@@ -1,0 +1,147 @@
+@page "/admin/muscles"
+@attribute [Authorize]
+@using Web.Blazor.Training
+@using Web.Blazor.Components.Shared
+@inject ITrainingApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Músculos</PageTitle>
+
+@* Managing the muscle-group catalog is admin-only — gated by muscle.write. *@
+<PermissionView Permission="muscle.write">
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h4">Músculos</MudText>
+        <MudSpacer />
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreate">Novo músculo</MudButton>
+    </MudStack>
+
+    <MudText Typo="Typo.body2" Class="mb-3" Style="color:var(--mud-palette-text-secondary)">
+        Grupos musculares usados no cadastro de exercícios. Duplo-clique numa linha para editar. Um
+        músculo em uso por exercícios não pode ser excluído.
+    </MudText>
+
+    <MudTable Items="_items" Hover Loading="_loading" Dense Breakpoint="Breakpoint.Sm"
+              T="MuscleGroupDto" OnRowClick="OnRowClick" Style="cursor:pointer">
+        <HeaderContent>
+            <MudTh>Nome</MudTh>
+            <MudTh>Região</MudTh>
+            <MudTh Style="text-align:right">Ações</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Nome">@context.Name</MudTd>
+            <MudTd DataLabel="Região">@context.BodyRegion</MudTd>
+            <MudTd DataLabel="Ações" Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               Disabled="_busy" OnClick="@(() => Delete(context))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>Nenhum músculo cadastrado.</MudText></NoRecordsContent>
+    </MudTable>
+</PermissionView>
+
+@code {
+    private IReadOnlyList<MuscleGroupDto> _items = [];
+    private bool _loading = true;
+    private bool _busy;
+    private readonly DoubleClickDetector _dbl = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _items = await Api.ListMuscleGroupsAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar músculos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnRowClick(TableRowClickEventArgs<MuscleGroupDto> args)
+    {
+        if (args.Item is not null && _dbl.IsDoubleClick(args.Item))
+        {
+            await OpenEdit(args.Item);
+        }
+    }
+
+    private async Task OpenCreate()
+    {
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.MuscleGroupDialog>("Novo músculo");
+        DialogResult? r = await dlg.Result;
+        if (r is null || r.Canceled || r.Data is not Dialogs.MuscleGroupDialog.Result v)
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.CreateMuscleGroupAsync(new CreateMuscleGroupRequest(v.Name, v.BodyRegion), CancellationToken.None);
+            Snackbar.Add("Músculo criado.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao criar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenEdit(MuscleGroupDto muscle)
+    {
+        var parameters = new DialogParameters<Dialogs.MuscleGroupDialog> { { x => x.Muscle, muscle } };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.MuscleGroupDialog>("Editar músculo", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is null || r.Canceled || r.Data is not Dialogs.MuscleGroupDialog.Result v)
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.UpdateMuscleGroupAsync(muscle.Id, new UpdateMuscleGroupRequest(v.Name, v.BodyRegion), CancellationToken.None);
+            Snackbar.Add("Músculo atualizado.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao atualizar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Delete(MuscleGroupDto muscle)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Excluir músculo",
+            $"Excluir \"{muscle.Name}\"? Exercícios que o utilizam impedem a exclusão.",
+            yesText: "Excluir", cancelText: "Cancelar");
+        if (confirm != true)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.DeleteMuscleGroupAsync(muscle.Id, CancellationToken.None);
+            Snackbar.Add("Músculo excluído.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao excluir (em uso?): {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

@@ -4,6 +4,10 @@ public enum HealthObservationKind { HealthIssue = 0, ProfessorNote = 1 }
 
 public sealed record MuscleGroupDto(Guid Id, string Name, string BodyRegion);
 
+public sealed record CreateMuscleGroupRequest(string Name, string BodyRegion);
+
+public sealed record UpdateMuscleGroupRequest(string Name, string BodyRegion);
+
 // ---- Modalities (admin-managed catalog) ----
 public sealed record ModalityDto(Guid Id, string Name, string ColorHex, bool IsIntervalBased, int SortOrder);
 

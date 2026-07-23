@@ -80,6 +80,24 @@ internal sealed class DevIdentitySeedHostedService(
             r => r.TenantId == DevIdentityDefaults.TenantId && r.Name == mock.RoleName, ct);
         if (role is not null)
         {
+            // Reconcile: attach any permissions added to the mock set since the role was first seeded,
+            // so new PermissionCodes take effect on the next startup WITHOUT wiping auth_db.
+            bool changed = false;
+            foreach (string code in mock.Permissions)
+            {
+                if (permissionIdByCode.TryGetValue(code, out Guid permissionId)
+                    && !role.PermissionIds.Contains(permissionId))
+                {
+                    role.AssignPermission(permissionId);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                await db.SaveChangesAsync(ct);
+            }
+
             return role.Id;
         }
 
