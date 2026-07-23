@@ -1,5 +1,6 @@
 using Infra.Authentication;
 using Microsoft.Extensions.Http;
+using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
 
 namespace Gateway;
@@ -21,9 +22,10 @@ internal static class DependencyInjection
         var section = configuration.GetSection("Auth");
         var issuer = section["Authority"]
             ?? throw new InvalidOperationException("Auth:Authority is required.");
-        // Validated at startup so misconfiguration fails fast even though the endpoint is
-        // discovered automatically from the issuer's metadata document.
-        _ = section["IntrospectionEndpoint"]
+        // Used to build a static server configuration (below) so we never fetch discovery — this
+        // decouples the token issuer from the network address used to reach introspection (docker:
+        // app hits localhost:5100, services hit auth.api:8080). See IntrospectionAuthenticationExtensions.
+        var introspectionEndpoint = section["IntrospectionEndpoint"]
             ?? throw new InvalidOperationException("Auth:IntrospectionEndpoint is required.");
         var clientId = section["IntrospectionClientId"]
             ?? throw new InvalidOperationException("Auth:IntrospectionClientId is required.");
@@ -41,6 +43,13 @@ internal static class DependencyInjection
             .AddValidation(o =>
             {
                 o.SetIssuer(new Uri(issuer));
+                // Static configuration => no discovery round-trip, so the token issuer and the
+                // introspection network address can legitimately differ (see note above).
+                o.SetConfiguration(new OpenIddictConfiguration
+                {
+                    Issuer = new Uri(issuer),
+                    IntrospectionEndpoint = new Uri(introspectionEndpoint),
+                });
                 o.AddAudiences("api:web", "api:auth");
                 o.UseIntrospection()
                     .SetClientId(clientId)

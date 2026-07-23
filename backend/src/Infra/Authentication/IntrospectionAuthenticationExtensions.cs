@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
+using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
 
 namespace Infra.Authentication;
@@ -17,9 +18,12 @@ public static class IntrospectionAuthenticationExtensions
         IConfigurationSection section = configuration.GetSection("Auth");
         string issuer = section["Authority"]
             ?? throw new InvalidOperationException("Auth:Authority is required.");
-        // Validated up-front so misconfiguration fails fast even though the endpoint is
-        // discovered automatically from the issuer's metadata document.
-        _ = section["IntrospectionEndpoint"]
+        // Used to build a static server configuration (below) so we never fetch the discovery
+        // document. This decouples the issuer (what tokens carry, e.g. the public Auth.API URL)
+        // from the network address used to reach introspection (e.g. an in-cluster URL) — otherwise
+        // the issuer advertised in discovery must match the address we fetch it from, which breaks
+        // whenever the two differ (classic docker: app hits localhost:5100, services hit auth.api:8080).
+        string introspectionEndpoint = section["IntrospectionEndpoint"]
             ?? throw new InvalidOperationException("Auth:IntrospectionEndpoint is required.");
         string clientId = section["IntrospectionClientId"]
             ?? throw new InvalidOperationException("Auth:IntrospectionClientId is required.");
@@ -55,6 +59,13 @@ public static class IntrospectionAuthenticationExtensions
             .AddValidation(o =>
             {
                 o.SetIssuer(new Uri(issuer));
+                // Static configuration => no discovery round-trip, so the token issuer and the
+                // introspection network address can legitimately differ (see note above).
+                o.SetConfiguration(new OpenIddictConfiguration
+                {
+                    Issuer = new Uri(issuer),
+                    IntrospectionEndpoint = new Uri(introspectionEndpoint),
+                });
                 o.AddAudiences("api:web");
                 o.UseIntrospection()
                     .SetClientId(clientId)

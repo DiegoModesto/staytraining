@@ -13,7 +13,10 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=staytraining;Username=postgres;Password=postgres;
-      - Auth__Authority=http://auth.api:8080
+      # Authority = token issuer (how the app/user reaches Auth.API); IntrospectionEndpoint = the
+      # in-cluster address services use. They differ on purpose — validation uses a static config
+      # (no discovery), so the two no longer need to match. See IntrospectionAuthenticationExtensions.
+      - Auth__Authority=http://localhost:5100
       - Auth__IntrospectionEndpoint=http://auth.api:8080/connect/introspect
       - Auth__IntrospectionClientId=web-api
       - Auth__IntrospectionClientSecret=${OPENIDDICT_WEB_API_SECRET:-dev-only-web-api-secret-change-me}
@@ -167,7 +170,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - Redis__ConnectionString=redis:6379
-      - Auth__Authority=http://auth.api:8080
+      # See web.api above: issuer (localhost:5100) decoupled from introspection address (auth.api:8080).
+      - Auth__Authority=http://localhost:5100
       - Auth__IntrospectionEndpoint=http://auth.api:8080/connect/introspect
       - Auth__IntrospectionClientId=gateway
       - Auth__IntrospectionClientSecret=${OPENIDDICT_GATEWAY_SECRET:-dev-only-gateway-secret-change-me}
