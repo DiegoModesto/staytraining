@@ -1,4 +1,5 @@
 using Application.Profiles.GetMyProfile;
+using Application.Profiles.SetPhoto;
 using Application.Profiles.Update;
 using Application.UnitTests.Support;
 using Domain.Profiles;
@@ -101,5 +102,35 @@ public class ProfileTests
         profile.UserId.ShouldBe(userId);
         profile.FullName.ShouldBe("Diego");
         profile.Email.ShouldBe("diego@x.com");
+    }
+
+    [Fact]
+    public async Task SetPhoto_sets_key_on_student_profile()
+    {
+        var tenant = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await using var db = TestHarness.NewContext();
+        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), TenantId = tenant, UserId = userId, FullName = "Rita", CreatedAt = DateTimeOffset.UtcNow });
+        await db.SaveChangesAsync();
+
+        var result = await new SetMyProfilePhotoCommandHandler(db, TestHarness.User(tenant, userId))
+            .Handle(new SetMyProfilePhotoCommand("avatars/x.webp"), CancellationToken.None);
+
+        result.IsSuccess.ShouldBeTrue();
+        db.StudentProfiles.Single().PhotoKey.ShouldBe("avatars/x.webp");
+    }
+
+    [Fact]
+    public async Task SetPhoto_creates_user_profile_for_non_student()
+    {
+        var tenant = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await using var db = TestHarness.NewContext();
+
+        var result = await new SetMyProfilePhotoCommandHandler(db, TestHarness.User(tenant, userId, "Diego"))
+            .Handle(new SetMyProfilePhotoCommand("avatars/y.webp"), CancellationToken.None);
+
+        result.IsSuccess.ShouldBeTrue();
+        db.UserProfiles.Single().PhotoKey.ShouldBe("avatars/y.webp");
     }
 }

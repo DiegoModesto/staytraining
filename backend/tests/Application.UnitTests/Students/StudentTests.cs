@@ -1,5 +1,6 @@
 using Application.Students.AddStudentNote;
 using Application.Students.Apportments;
+using Application.Students.EditLogs;
 using Application.Students.Ficha;
 using Application.Students.GetById;
 using Application.Students.List;
@@ -166,6 +167,41 @@ public class StudentTests
         var self = new RemoveMyApportmentCommandHandler(db, TestHarness.User(tenant, owner));
         (await self.Handle(new RemoveMyApportmentCommand(apportId), CancellationToken.None)).IsSuccess.ShouldBeTrue();
         db.HealthApportments.Count().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AdminRemoveApportment_removes_and_logs_then_lists_logs_newest_first()
+    {
+        var tenant = Guid.NewGuid();
+        var studentId = Guid.NewGuid();
+        var apportId = Guid.NewGuid();
+        await using var db = TestHarness.NewContext();
+        db.StudentProfiles.Add(new StudentProfile
+        {
+            Id = studentId, TenantId = tenant, UserId = Guid.NewGuid(), FullName = "Rita",
+            HealthApportments =
+            [
+                new HealthApportment
+                {
+                    Id = apportId, StudentProfileId = studentId,
+                    BodyPartId = Guid.NewGuid(), BodyPartName = "Ombro",
+                    ProblemTypeId = Guid.NewGuid(), ProblemTypeName = "Deslocamento",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                },
+            ],
+        });
+        await db.SaveChangesAsync();
+
+        var admin = TestHarness.User(tenant, Guid.NewGuid(), "Diego");
+        var remove = await new RemoveStudentApportmentCommandHandler(db, admin)
+            .Handle(new RemoveStudentApportmentCommand(studentId, apportId), CancellationToken.None);
+        remove.IsSuccess.ShouldBeTrue();
+        db.HealthApportments.Count().ShouldBe(0);
+
+        var logs = await new ListStudentEditLogsQueryHandler(db)
+            .Handle(new ListStudentEditLogsQuery(studentId), CancellationToken.None);
+        logs.Value.Count.ShouldBe(1);
+        logs.Value.First().Action.ShouldBe("ApportmentRemoved");
     }
 
     [Fact]
