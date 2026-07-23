@@ -213,6 +213,27 @@ public class StudentTests
     }
 
     [Fact]
+    public async Task AddStudentNote_scopes_to_workout_when_workoutId_given()
+    {
+        var tenant = Guid.NewGuid();
+        var studentId = Guid.NewGuid();
+        var workoutId = Guid.NewGuid();
+        await using var db = TestHarness.NewContext();
+        db.StudentProfiles.Add(new StudentProfile { Id = studentId, TenantId = tenant, UserId = Guid.NewGuid(), FullName = "Rita" });
+        await db.SaveChangesAsync();
+
+        var add = new AddStudentNoteCommandHandler(db, TestHarness.User(tenant, Guid.NewGuid(), "Diego"));
+        await add.Handle(new AddStudentNoteCommand(studentId, "geral"), CancellationToken.None);
+        await add.Handle(new AddStudentNoteCommand(studentId, "do treino", workoutId), CancellationToken.None);
+
+        var list = await new ListStudentNotesQueryHandler(db, TestHarness.User(tenant))
+            .Handle(new ListStudentNotesQuery(studentId), CancellationToken.None);
+
+        list.Value.Count(n => n.WorkoutId == null).ShouldBe(1);
+        list.Value.Count(n => n.WorkoutId == workoutId).ShouldBe(1);
+    }
+
+    [Fact]
     public async Task AddStudentNote_defaults_author_name_when_token_has_none()
     {
         var tenant = Guid.NewGuid();

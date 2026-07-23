@@ -34,6 +34,7 @@ public sealed class AddStudentNoteCommandHandler(
             AuthorUserId = userContext.UserId,
             AuthorName = string.IsNullOrWhiteSpace(userContext.Name) ? "Professor" : userContext.Name,
             Content = command.Content,
+            WorkoutId = command.WorkoutId,
             CreatedAt = DateTimeOffset.UtcNow,
         };
 

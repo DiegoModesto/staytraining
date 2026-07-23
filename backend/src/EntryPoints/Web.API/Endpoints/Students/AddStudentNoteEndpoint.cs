@@ -7,7 +7,7 @@ namespace Web.API.Endpoints.Students;
 
 internal sealed class AddStudentNoteEndpoint : IEndpoint
 {
-    public sealed record Request(string Content);
+    public sealed record Request(string Content, Guid? WorkoutId);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -17,7 +17,7 @@ internal sealed class AddStudentNoteEndpoint : IEndpoint
                 ICommandHandler<AddStudentNoteCommand, Guid> handler,
                 CancellationToken cancellationToken) =>
             {
-                var command = new AddStudentNoteCommand(id, request.Content);
+                var command = new AddStudentNoteCommand(id, request.Content, request.WorkoutId);
 
                 var result = await handler.Handle(command, cancellationToken);
 

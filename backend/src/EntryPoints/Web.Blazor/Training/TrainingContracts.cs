@@ -95,9 +95,9 @@ public sealed record CatalogNameRequest(string Name);
 public sealed record CreateProblemTypeRequest(Guid BodyPartId, string Name);
 
 public sealed record StudentNoteDto(
-    Guid Id, Guid AuthorUserId, string AuthorName, string Content, DateTimeOffset CreatedAt);
+    Guid Id, Guid? WorkoutId, Guid AuthorUserId, string AuthorName, string Content, DateTimeOffset CreatedAt);
 
-public sealed record AddStudentNoteRequest(string Content);
+public sealed record AddStudentNoteRequest(string Content, Guid? WorkoutId = null);
 
 public sealed record WorkoutListItemDto(
     Guid Id, string Name, Guid? ModalityId, string? ModalityName, int ItemCount);

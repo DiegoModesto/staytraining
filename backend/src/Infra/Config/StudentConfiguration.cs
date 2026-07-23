@@ -60,6 +60,7 @@ internal sealed class StudentNoteConfiguration : IEntityTypeConfiguration<Studen
         builder.Property(n => n.CreatedAt).IsRequired();
 
         builder.HasIndex(n => n.StudentProfileId);
+        builder.HasIndex(n => new { n.StudentProfileId, n.WorkoutId });
     }
 }
 

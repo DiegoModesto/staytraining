@@ -15,6 +15,7 @@ public sealed record HealthApportmentResponse(
 
 public sealed record StudentNoteResponse(
     Guid Id,
+    Guid? WorkoutId,
     Guid AuthorUserId,
     string AuthorName,
     string Content,

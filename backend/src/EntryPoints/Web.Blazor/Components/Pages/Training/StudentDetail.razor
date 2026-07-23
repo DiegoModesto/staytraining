@@ -33,175 +33,203 @@
             </PermissionView>
         </MudStack>
 
-        <MudStack Row AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
-            <MudAvatar Style="height:64px;width:64px">
-                @if (!string.IsNullOrEmpty(_student.PhotoUrl))
+        <MudTabs Elevation="0" Rounded="true" Border="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+            <MudTabPanel Text="Ficha" Icon="@Icons.Material.Filled.Badge">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+                    <MudAvatar Style="height:64px;width:64px">
+                        @if (!string.IsNullOrEmpty(_student.PhotoUrl))
+                        {
+                            <MudImage Src="@_student.PhotoUrl" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Person" />
+                        }
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.body2">@_student.Email</MudText>
+                        @if (!string.IsNullOrWhiteSpace(_student.Phone))
+                        {
+                            <MudText Typo="Typo.body2">📞 @_student.Phone</MudText>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_student.EmergencyPhone))
+                        {
+                            <MudText Typo="Typo.body2">🚑 @_student.EmergencyPhone</MudText>
+                        }
+                        <MudStack Row Spacing="1" Class="mt-1">
+                            @if (_student.BloodType != BloodType.Unknown)
+                            {
+                                <MudChip T="string" Size="Size.Small">@BloodTypeDisplay.Label(_student.BloodType)</MudChip>
+                            }
+                            @if (_student.HeightCm is int h)
+                            {
+                                <MudChip T="string" Size="Size.Small">@h cm</MudChip>
+                            }
+                            @if (_student.WeightKg is decimal wkg)
+                            {
+                                <MudChip T="string" Size="Size.Small">@wkg.ToString("0.#") kg</MudChip>
+                            }
+                        </MudStack>
+                    </div>
+                </MudStack>
+                @if (!string.IsNullOrWhiteSpace(_student.Goals))
                 {
-                    <MudImage Src="@_student.PhotoUrl" />
+                    <MudAlert Severity="Severity.Info" Class="mb-4">@_student.Goals</MudAlert>
+                }
+
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudCard>
+                            <MudCardHeader>
+                                <CardHeaderContent><MudText Typo="Typo.h6">Apontamentos de saúde</MudText></CardHeaderContent>
+                                <CardHeaderActions>
+                                    <PermissionView Permission="studentficha.write">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Add" OnClick="OpenAddApportment" />
+                                    </PermissionView>
+                                </CardHeaderActions>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                @if (_student.HealthApportments.Count == 0)
+                                {
+                                    <MudText Typo="Typo.body2">Sem apontamentos.</MudText>
+                                }
+                                else
+                                {
+                                    <MudList T="HealthApportmentDto" Dense>
+                                        @foreach (var a in _student.HealthApportments)
+                                        {
+                                            <MudListItem T="HealthApportmentDto" Icon="@Icons.Material.Filled.HealthAndSafety">
+                                                <MudStack Row AlignItems="AlignItems.Center">
+                                                    <div style="flex:1">
+                                                        <MudText Typo="Typo.subtitle2">@a.BodyPartName: @a.ProblemTypeName</MudText>
+                                                        @if (!string.IsNullOrWhiteSpace(a.Observation))
+                                                        {
+                                                            <MudText Typo="Typo.body2">Obs: @a.Observation</MudText>
+                                                        }
+                                                    </div>
+                                                    <PermissionView Permission="studentficha.write">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                                       Color="Color.Error" OnClick="@(() => RemoveApportment(a))" />
+                                                    </PermissionView>
+                                                </MudStack>
+                                            </MudListItem>
+                                        }
+                                    </MudList>
+                                }
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudCard>
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Anotações do aluno</MudText>
+                                    <MudText Typo="Typo.caption">Gerais — visíveis a todos os professores, nunca ao aluno.</MudText>
+                                </CardHeaderContent>
+                                <CardHeaderActions>
+                                    <PermissionView Permission="student.read">
+                                        <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.EditNote"
+                                                   Color="Color.Primary" OnClick="OpenAddNote">Nova anotação</MudButton>
+                                    </PermissionView>
+                                </CardHeaderActions>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                @{ var generalNotes = _notes.Where(n => n.WorkoutId is null).ToList(); }
+                                @if (generalNotes.Count == 0)
+                                {
+                                    <MudText Typo="Typo.body2">Sem anotações.</MudText>
+                                }
+                                else
+                                {
+                                    <MudList T="StudentNoteDto" Dense>
+                                        @foreach (var n in generalNotes)
+                                        {
+                                            <MudListItem T="StudentNoteDto" Icon="@Icons.Material.Filled.StickyNote2">
+                                                <MudText Typo="Typo.body1">@n.Content</MudText>
+                                                <MudText Typo="Typo.caption">
+                                                    @n.AuthorName · @n.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                                </MudText>
+                                            </MudListItem>
+                                        }
+                                    </MudList>
+                                }
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Treinos" Icon="@Icons.Material.Filled.FitnessCenter">
+                <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudSpacer />
+                    <PermissionView Permission="workout.write">
+                        <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                                   Color="Color.Primary" OnClick="OpenCreateWorkout">Novo treino</MudButton>
+                        <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.ContentCopy"
+                                   OnClick="OpenAssignTemplate">De modelo</MudButton>
+                    </PermissionView>
+                </MudStack>
+
+                @if (_workouts.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">Nenhum treino atribuído.</MudText>
                 }
                 else
                 {
-                    <MudIcon Icon="@Icons.Material.Filled.Person" />
-                }
-            </MudAvatar>
-            <div>
-                <MudText Typo="Typo.body2">@_student.Email</MudText>
-                @if (!string.IsNullOrWhiteSpace(_student.Phone))
-                {
-                    <MudText Typo="Typo.body2">📞 @_student.Phone</MudText>
-                }
-                @if (!string.IsNullOrWhiteSpace(_student.EmergencyPhone))
-                {
-                    <MudText Typo="Typo.body2">🚑 @_student.EmergencyPhone</MudText>
-                }
-                <MudStack Row Spacing="1" Class="mt-1">
-                    @if (_student.BloodType != BloodType.Unknown)
+                    @foreach (var w in _workouts)
                     {
-                        <MudChip T="string" Size="Size.Small">@BloodTypeDisplay.Label(_student.BloodType)</MudChip>
-                    }
-                    @if (_student.HeightCm is int h)
-                    {
-                        <MudChip T="string" Size="Size.Small">@h cm</MudChip>
-                    }
-                    @if (_student.WeightKg is decimal w)
-                    {
-                        <MudChip T="string" Size="Size.Small">@w.ToString("0.#") kg</MudChip>
-                    }
-                </MudStack>
-            </div>
-        </MudStack>
-        @if (!string.IsNullOrWhiteSpace(_student.Goals))
-        {
-            <MudAlert Severity="Severity.Info" Class="mb-4">@_student.Goals</MudAlert>
-        }
-
-        <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudCard>
-                    <MudCardHeader>
-                        <CardHeaderContent><MudText Typo="Typo.h6">Apontamentos de saúde</MudText></CardHeaderContent>
-                        <CardHeaderActions>
-                            <PermissionView Permission="studentficha.write">
-                                <MudIconButton Icon="@Icons.Material.Filled.Add" OnClick="OpenAddApportment" />
-                            </PermissionView>
-                        </CardHeaderActions>
-                    </MudCardHeader>
-                    <MudCardContent>
-                        @if (_student.HealthApportments.Count == 0)
-                        {
-                            <MudText Typo="Typo.body2">Sem apontamentos.</MudText>
-                        }
-                        else
-                        {
-                            <MudList T="HealthApportmentDto" Dense>
-                                @foreach (var a in _student.HealthApportments)
+                        var workoutNotes = _notes.Where(n => n.WorkoutId == w.Id).ToList();
+                        <MudCard Class="mb-3">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudStack Row AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.FitnessCenter" />
+                                        <MudText Typo="Typo.subtitle1" Style="cursor:pointer"
+                                                 @onclick="@(() => OpenWorkout(w.Id))">@w.Name</MudText>
+                                        <MudChip T="string" Size="Size.Small">@w.ItemCount ex.</MudChip>
+                                    </MudStack>
+                                </CardHeaderContent>
+                                <CardHeaderActions>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                               OnClick="@(() => OpenWorkout(w.Id))">Abrir</MudButton>
+                                    <PermissionView Permission="student.read">
+                                        <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.EditNote"
+                                                   OnClick="@(() => OpenAddWorkoutNote(w.Id))">Anotação</MudButton>
+                                    </PermissionView>
+                                    <PermissionView Permission="workout.write">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                       Color="Color.Error" OnClick="@(() => DeleteWorkout(w.Id, w.Name))" />
+                                    </PermissionView>
+                                </CardHeaderActions>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                @if (workoutNotes.Count == 0)
                                 {
-                                    <MudListItem T="HealthApportmentDto" Icon="@Icons.Material.Filled.HealthAndSafety">
-                                        <MudStack Row AlignItems="AlignItems.Center">
-                                            <div style="flex:1">
-                                                <MudText Typo="Typo.subtitle2">@a.BodyPartName: @a.ProblemTypeName</MudText>
-                                                @if (!string.IsNullOrWhiteSpace(a.Observation))
-                                                {
-                                                    <MudText Typo="Typo.body2">Obs: @a.Observation</MudText>
-                                                }
-                                            </div>
-                                            <PermissionView Permission="studentficha.write">
-                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                                                               Color="Color.Error" OnClick="@(() => RemoveApportment(a))" />
-                                            </PermissionView>
-                                        </MudStack>
-                                    </MudListItem>
+                                    <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)">
+                                        Sem anotações neste treino.
+                                    </MudText>
                                 }
-                            </MudList>
-                        }
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
-
-            <MudItem xs="12" md="6">
-                <MudCard>
-                    <MudCardHeader>
-                        <CardHeaderContent><MudText Typo="Typo.h6">Treinos</MudText></CardHeaderContent>
-                        <CardHeaderActions>
-                            <PermissionView Permission="workout.write">
-                                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
-                                           Color="Color.Primary" OnClick="OpenCreateWorkout">Novo treino</MudButton>
-                                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.ContentCopy"
-                                           OnClick="OpenAssignTemplate">De modelo</MudButton>
-                            </PermissionView>
-                        </CardHeaderActions>
-                    </MudCardHeader>
-                    <MudCardContent>
-                        @if (_workouts.Count == 0)
-                        {
-                            <MudText Typo="Typo.body2">Nenhum treino atribuído.</MudText>
-                        }
-                        else
-                        {
-                            <MudList T="WorkoutListItemDto" Dense>
-                                @foreach (var w in _workouts)
+                                else
                                 {
-                                    <MudListItem T="WorkoutListItemDto" Icon="@Icons.Material.Filled.FitnessCenter"
-                                                 OnClick="() => OpenWorkout(w.Id)">
-                                        <MudStack Row AlignItems="AlignItems.Center">
-                                            <span>@w.Name</span>
-                                            <MudChip T="string" Size="Size.Small">@w.ItemCount ex.</MudChip>
-                                            <MudSpacer />
-                                            <PermissionView Permission="workout.write">
-                                                <div @onclick:stopPropagation="true">
-                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                                                                   Color="Color.Error"
-                                                                   OnClick="@(() => DeleteWorkout(w.Id, w.Name))" />
-                                                </div>
-                                            </PermissionView>
-                                        </MudStack>
-                                    </MudListItem>
+                                    <MudList T="StudentNoteDto" Dense>
+                                        @foreach (var n in workoutNotes)
+                                        {
+                                            <MudListItem T="StudentNoteDto" Icon="@Icons.Material.Filled.StickyNote2">
+                                                <MudText Typo="Typo.body1">@n.Content</MudText>
+                                                <MudText Typo="Typo.caption">
+                                                    @n.AuthorName · @n.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                                </MudText>
+                                            </MudListItem>
+                                        }
+                                    </MudList>
                                 }
-                            </MudList>
-                        }
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
-
-            <MudItem xs="12">
-                <MudCard>
-                    <MudCardHeader>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.h6">Anotações</MudText>
-                            <MudText Typo="Typo.caption">Visíveis a todos os professores — nunca ao aluno.</MudText>
-                        </CardHeaderContent>
-                        <CardHeaderActions>
-                            @* Gated by student.read (professor-only) so the button is always visible to
-                               professors; the API still enforces studentnote.write on the POST. *@
-                            <PermissionView Permission="student.read">
-                                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.EditNote"
-                                           Color="Color.Primary" OnClick="OpenAddNote">Nova anotação</MudButton>
-                            </PermissionView>
-                        </CardHeaderActions>
-                    </MudCardHeader>
-                    <MudCardContent>
-                        @if (_notes.Count == 0)
-                        {
-                            <MudText Typo="Typo.body2">Sem anotações.</MudText>
-                        }
-                        else
-                        {
-                            <MudList T="StudentNoteDto" Dense>
-                                @foreach (var n in _notes)
-                                {
-                                    <MudListItem T="StudentNoteDto" Icon="@Icons.Material.Filled.StickyNote2">
-                                        <MudText Typo="Typo.body1">@n.Content</MudText>
-                                        <MudText Typo="Typo.caption">
-                                            @n.AuthorName · @n.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
-                                        </MudText>
-                                    </MudListItem>
-                                }
-                            </MudList>
-                        }
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
-        </MudGrid>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                }
+            </MudTabPanel>
+        </MudTabs>
     }
 </PermissionView>
 
@@ -314,13 +342,19 @@
         await DialogService.ShowAsync<Dialogs.StudentEditLogsDialog>("Histórico de edições", parameters);
     }
 
-    private async Task OpenAddNote()
+    private Task OpenAddNote() => AddNote(null);
+
+    private Task OpenAddWorkoutNote(Guid workoutId) => AddNote(workoutId);
+
+    private async Task AddNote(Guid? workoutId)
     {
         var parameters = new DialogParameters<Dialogs.AddStudentNoteDialog>
         {
             { x => x.StudentProfileId, StudentId },
+            { x => x.WorkoutId, workoutId },
         };
-        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AddStudentNoteDialog>("Nova anotação", parameters);
+        string title = workoutId is null ? "Nova anotação" : "Anotação do treino";
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AddStudentNoteDialog>(title, parameters);
         DialogResult? r = await dlg.Result;
         if (r is not null && !r.Canceled) await LoadAsync();
     }
