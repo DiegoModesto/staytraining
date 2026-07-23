@@ -96,6 +96,11 @@ Sem nada disso, os **lembretes locais** (treino pendente) continuam funcionando 
 
 ## Status
 
-Estrutura completa e idiomática. **Não foi compilada nesta máquina** (Flutter não instalado no
-ambiente de geração). Rode `flutter analyze` após `flutter create . && flutter pub get` e ajuste
-versões de pacotes se necessário.
+Estrutura completa e idiomática. `dart analyze` limpo e `flutter test` verde (34 testes).
+
+> ⚠️ **Não rode `flutter create .`** — as pastas `android/` e `ios/` são versionadas porque
+> carregam config essencial (redirect scheme do OIDC, cleartext/ATS de dev). Regenerar
+> sobrescreveria essa config e quebraria o login. Use `flutter pub get` normalmente; só recrie
+> `linux/macos/windows/web` (ignoradas) se for mexer em desktop/web.
+
+Cenário local de teste (API + app): veja `scripts/dev.sh` na raiz do repo.
