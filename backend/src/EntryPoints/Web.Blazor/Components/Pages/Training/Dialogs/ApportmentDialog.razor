@@ -1,0 +1,73 @@
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudSelect T="Guid?" @bind-Value="_bodyPartId" Label="Local do corpo" Required
+                   Placeholder="Selecione o local" Class="mb-3" @bind-Value:after="OnBodyPartChanged">
+            @foreach (var b in _catalog)
+            {
+                <MudSelectItem T="Guid?" Value="@b.Id">@b.Name</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect T="Guid?" @bind-Value="_problemTypeId" Label="Tipo de problema" Required
+                   Placeholder="Selecione o tipo" Class="mb-3" Disabled="_problemTypes.Count == 0">
+            @foreach (var p in _problemTypes)
+            {
+                <MudSelectItem T="Guid?" Value="@p.Id">@p.Name</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudTextField @bind-Value="_observation" Label="Observação (opcional)" Lines="3" MaxLength="4000"
+                      HelperText="Ex.: Não foi feita cirurgia; foco do treino é absorção da hérnia." />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialog.Cancel())">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy">Adicionar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    private IReadOnlyList<BodyPartDto> _catalog = [];
+    private IReadOnlyList<ProblemTypeDto> _problemTypes = [];
+    private Guid? _bodyPartId;
+    private Guid? _problemTypeId;
+    private string? _observation;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _catalog = await Api.ListHealthCatalogAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar catálogo: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OnBodyPartChanged()
+    {
+        _problemTypeId = null;
+        _problemTypes = _bodyPartId is Guid id
+            ? _catalog.FirstOrDefault(b => b.Id == id)?.ProblemTypes ?? []
+            : [];
+    }
+
+    private void Submit()
+    {
+        if (_bodyPartId is not Guid bp || _problemTypeId is not Guid pt)
+        {
+            Snackbar.Add("Selecione o local do corpo e o tipo de problema.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        Dialog.Close(DialogResult.Ok(new AddApportmentRequest(bp, pt, string.IsNullOrWhiteSpace(_observation) ? null : _observation.Trim())));
+    }
+}

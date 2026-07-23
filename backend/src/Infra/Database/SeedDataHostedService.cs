@@ -1,5 +1,6 @@
 using Application.Abstractions.Data;
 using Domain.Exercises;
+using Domain.HealthCatalog;
 using Domain.Modalities;
 using Domain.MuscleGroups;
 using Domain.Students;
@@ -36,6 +37,7 @@ internal sealed class SeedDataHostedService(
 
         Dictionary<string, Guid> muscleByName = await SeedMuscleGroupsAsync(db, cancellationToken);
         await SeedModalitiesAsync(db, cancellationToken);
+        await SeedHealthCatalogAsync(db, cancellationToken);
 
         string? tenantRaw = configuration["Seed:TenantId"];
         if (!Guid.TryParse(tenantRaw, out Guid tenantId))
@@ -78,13 +80,15 @@ internal sealed class SeedDataHostedService(
                 Goals = "Ganho de força e condicionamento geral.",
                 CreatedAt = DateTimeOffset.UtcNow,
             };
-            rita.HealthObservations.Add(new HealthObservation
+            rita.HealthApportments.Add(new HealthApportment
             {
                 Id = Guid.NewGuid(),
                 StudentProfileId = rita.Id,
-                Kind = HealthObservationKind.HealthIssue,
-                Title = "Cuidado com ombro direito",
-                Detail = "Evitar carga máxima em desenvolvimento; progressão gradual.",
+                BodyPartId = HealthCatalogDefaults.OmbroId,
+                BodyPartName = "Ombro",
+                ProblemTypeId = HealthCatalogDefaults.OmbroDeslocamentoId,
+                ProblemTypeName = "Deslocamento",
+                Observation = "Evitar carga máxima em desenvolvimento; progressão gradual.",
                 CreatedAt = DateTimeOffset.UtcNow,
             });
             rita.Notes.Add(new StudentNote
@@ -194,6 +198,49 @@ internal sealed class SeedDataHostedService(
                 SortOrder = seed.SortOrder,
                 CreatedAt = DateTimeOffset.UtcNow,
             });
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Ensures the built-in health-issue catalog (body parts + problem types) exists.</summary>
+    private static async Task SeedHealthCatalogAsync(IApplicationDbContext db, CancellationToken ct)
+    {
+        List<Guid> existingParts = await db.BodyParts.Select(b => b.Id).ToListAsync(ct);
+        var partSet = existingParts.ToHashSet();
+        List<Guid> existingProblems = await db.ProblemTypes.Select(p => p.Id).ToListAsync(ct);
+        var problemSet = existingProblems.ToHashSet();
+
+        foreach (HealthCatalogDefaults.BodyPartSeed part in HealthCatalogDefaults.All)
+        {
+            if (!partSet.Contains(part.Id))
+            {
+                db.BodyParts.Add(new BodyPart
+                {
+                    Id = part.Id,
+                    Name = part.Name,
+                    SortOrder = part.SortOrder,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                });
+            }
+
+            int order = 0;
+            foreach (HealthCatalogDefaults.ProblemSeed problem in part.Problems)
+            {
+                if (!problemSet.Contains(problem.Id))
+                {
+                    db.ProblemTypes.Add(new ProblemType
+                    {
+                        Id = problem.Id,
+                        BodyPartId = part.Id,
+                        Name = problem.Name,
+                        SortOrder = order,
+                        CreatedAt = DateTimeOffset.UtcNow,
+                    });
+                }
+
+                order++;
+            }
         }
 
         await db.SaveChangesAsync(ct);

@@ -4,7 +4,6 @@ using Application.Execution.Schedule;
 using Application.Execution.Sessions.Complete;
 using Application.Execution.Sessions.Start;
 using Application.Execution.Sessions.UpsertNote;
-using Application.Students.AddHealthObservation;
 using Application.Students.Register;
 using Application.Workouts;
 using Application.Workouts.Templates.Create;
@@ -104,14 +103,6 @@ public class ValidatorsTests
         var v = new RegisterStudentCommandValidator();
         v.Validate(new RegisterStudentCommand(Guid.NewGuid(), "Rita", "r@x.com", null, null)).IsValid.ShouldBeTrue();
         v.Validate(new RegisterStudentCommand(Guid.Empty, "", null, null, null)).IsValid.ShouldBeFalse();
-    }
-
-    [Fact]
-    public void AddHealthObservation_requires_student_and_title()
-    {
-        var v = new AddHealthObservationCommandValidator();
-        v.Validate(new AddHealthObservationCommand(Guid.NewGuid(), HealthObservationKind.HealthIssue, "T", "d")).IsValid.ShouldBeTrue();
-        v.Validate(new AddHealthObservationCommand(Guid.Empty, HealthObservationKind.HealthIssue, "", null)).IsValid.ShouldBeFalse();
     }
 
     [Fact]

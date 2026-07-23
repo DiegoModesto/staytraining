@@ -28,14 +28,19 @@ internal sealed class StudentProfileConfiguration : AbstractConfiguration<Studen
 
         builder.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
 
-        builder.HasMany(e => e.HealthObservations)
+        builder.HasMany(e => e.HealthApportments)
             .WithOne()
-            .HasForeignKey(o => o.StudentProfileId)
+            .HasForeignKey(a => a.StudentProfileId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(e => e.Notes)
             .WithOne()
             .HasForeignKey(n => n.StudentProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(e => e.EditLogs)
+            .WithOne()
+            .HasForeignKey(l => l.StudentProfileId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
@@ -58,20 +63,41 @@ internal sealed class StudentNoteConfiguration : IEntityTypeConfiguration<Studen
     }
 }
 
-internal sealed class HealthObservationConfiguration : IEntityTypeConfiguration<HealthObservation>
+internal sealed class HealthApportmentConfiguration : IEntityTypeConfiguration<HealthApportment>
 {
-    public void Configure(EntityTypeBuilder<HealthObservation> builder)
+    public void Configure(EntityTypeBuilder<HealthApportment> builder)
     {
-        builder.ToTable("health_observations");
+        builder.ToTable("health_apportments");
 
-        builder.HasKey(o => o.Id);
+        builder.HasKey(a => a.Id);
 
-        builder.Property(o => o.StudentProfileId).IsRequired();
-        builder.Property(o => o.Kind).HasConversion<string>().HasMaxLength(20);
-        builder.Property(o => o.Title).IsRequired().HasMaxLength(200);
-        builder.Property(o => o.Detail).HasMaxLength(4000);
-        builder.Property(o => o.CreatedAt).IsRequired();
+        builder.Property(a => a.StudentProfileId).IsRequired();
+        builder.Property(a => a.BodyPartId).IsRequired();
+        builder.Property(a => a.BodyPartName).IsRequired().HasMaxLength(80);
+        builder.Property(a => a.ProblemTypeId).IsRequired();
+        builder.Property(a => a.ProblemTypeName).IsRequired().HasMaxLength(120);
+        builder.Property(a => a.Observation).HasMaxLength(4000);
+        builder.Property(a => a.CreatedAt).IsRequired();
 
-        builder.HasIndex(o => o.StudentProfileId);
+        builder.HasIndex(a => a.StudentProfileId);
+    }
+}
+
+internal sealed class StudentEditLogConfiguration : IEntityTypeConfiguration<StudentEditLog>
+{
+    public void Configure(EntityTypeBuilder<StudentEditLog> builder)
+    {
+        builder.ToTable("student_edit_logs");
+
+        builder.HasKey(l => l.Id);
+
+        builder.Property(l => l.StudentProfileId).IsRequired();
+        builder.Property(l => l.EditorUserId).IsRequired();
+        builder.Property(l => l.EditorName).IsRequired().HasMaxLength(200);
+        builder.Property(l => l.Action).IsRequired().HasMaxLength(50);
+        builder.Property(l => l.Detail).IsRequired().HasMaxLength(2000);
+        builder.Property(l => l.CreatedAt).IsRequired();
+
+        builder.HasIndex(l => l.StudentProfileId);
     }
 }

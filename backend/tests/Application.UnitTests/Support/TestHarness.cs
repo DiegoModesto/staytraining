@@ -1,8 +1,21 @@
 using Application.Abstractions.Authentication;
+using Application.Abstractions.Storage;
 using Infra.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace Application.UnitTests.Support;
+
+/// <summary>No-op <see cref="IFileStorage"/> for handler tests — returns a fake presigned URL.</summary>
+public sealed class FakeFileStorage : IFileStorage
+{
+    public Task<string> UploadAsync(string key, Stream content, string contentType, long size, CancellationToken ct = default)
+        => Task.FromResult(key);
+
+    public Task<string> GetPresignedUrlAsync(string key, TimeSpan expiry, CancellationToken ct = default)
+        => Task.FromResult($"https://files.test/{key}");
+
+    public Task DeleteAsync(string key, CancellationToken ct = default) => Task.CompletedTask;
+}
 
 /// <summary>Deterministic fake of <see cref="IUserContext"/> for handler tests.</summary>
 public sealed class FakeUserContext(Guid? tenantId, Guid userId, string? name = null) : IUserContext

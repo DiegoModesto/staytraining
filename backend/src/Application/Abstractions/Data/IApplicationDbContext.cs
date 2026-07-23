@@ -1,6 +1,7 @@
 using Domain.Devices;
 using Domain.Execution;
 using Domain.Exercises;
+using Domain.HealthCatalog;
 using Domain.Modalities;
 using Domain.MuscleGroups;
 using Domain.Profiles;
@@ -33,8 +34,12 @@ public interface IApplicationDbContext
     DbSet<DeviceToken> DeviceTokens { get; }
 
     DbSet<StudentProfile> StudentProfiles { get; }
-    DbSet<HealthObservation> HealthObservations { get; }
+    DbSet<HealthApportment> HealthApportments { get; }
     DbSet<StudentNote> StudentNotes { get; }
+    DbSet<StudentEditLog> StudentEditLogs { get; }
+
+    DbSet<BodyPart> BodyParts { get; }
+    DbSet<ProblemType> ProblemTypes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

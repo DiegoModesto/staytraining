@@ -4,6 +4,7 @@ public static class Tags
 {
     public const string SampleEntity = "Sample Entity";
     public const string Profiles = "Profiles";
+    public const string HealthCatalog = "Health Catalog";
     public const string Modalities = "Modalities";
     public const string MuscleGroups = "Muscle Groups";
     public const string Exercises = "Exercises";

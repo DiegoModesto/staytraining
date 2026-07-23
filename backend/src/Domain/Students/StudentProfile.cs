@@ -34,8 +34,12 @@ public sealed class StudentProfile : Entity, IHasUpdatedAt
     /// <summary>Training goals / general notes visible to the student.</summary>
     public string? Goals { get; set; }
 
-    public List<HealthObservation> HealthObservations { get; set; } = [];
+    /// <summary>Structured health notes (body part + problem type + observation).</summary>
+    public List<HealthApportment> HealthApportments { get; set; } = [];
 
     /// <summary>Professor annotations on the student's sheet — visible to professors only, never to the student.</summary>
     public List<StudentNote> Notes { get; set; } = [];
+
+    /// <summary>Audit trail of administrator edits to this ficha.</summary>
+    public List<StudentEditLog> EditLogs { get; set; } = [];
 }

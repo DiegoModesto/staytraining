@@ -19,6 +19,10 @@
         <MudStack Row AlignItems="AlignItems.Center" Class="mb-1">
             <MudText Typo="Typo.h4">@_student.FullName</MudText>
             <MudSpacer />
+            <PermissionView Permission="studentficha.write">
+                <MudButton StartIcon="@Icons.Material.Filled.Edit" OnClick="OpenEditFicha">Editar ficha</MudButton>
+                <MudButton StartIcon="@Icons.Material.Filled.History" OnClick="OpenLogs">Histórico</MudButton>
+            </PermissionView>
             <PermissionView Permission="workout.read">
                 <MudButton StartIcon="@Icons.Material.Filled.CalendarMonth"
                            OnClick="@(() => Nav.NavigateTo($"/students/{StudentId}/schedule"))">Agenda</MudButton>
@@ -28,7 +32,44 @@
                            OnClick="@(() => Nav.NavigateTo($"/students/{StudentId}/report"))">Relatório semanal</MudButton>
             </PermissionView>
         </MudStack>
-        <MudText Typo="Typo.body2" Class="mb-4">@_student.Email</MudText>
+
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+            <MudAvatar Style="height:64px;width:64px">
+                @if (!string.IsNullOrEmpty(_student.PhotoUrl))
+                {
+                    <MudImage Src="@_student.PhotoUrl" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Person" />
+                }
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.body2">@_student.Email</MudText>
+                @if (!string.IsNullOrWhiteSpace(_student.Phone))
+                {
+                    <MudText Typo="Typo.body2">📞 @_student.Phone</MudText>
+                }
+                @if (!string.IsNullOrWhiteSpace(_student.EmergencyPhone))
+                {
+                    <MudText Typo="Typo.body2">🚑 @_student.EmergencyPhone</MudText>
+                }
+                <MudStack Row Spacing="1" Class="mt-1">
+                    @if (_student.BloodType != BloodType.Unknown)
+                    {
+                        <MudChip T="string" Size="Size.Small">@BloodTypeDisplay.Label(_student.BloodType)</MudChip>
+                    }
+                    @if (_student.HeightCm is int h)
+                    {
+                        <MudChip T="string" Size="Size.Small">@h cm</MudChip>
+                    }
+                    @if (_student.WeightKg is decimal w)
+                    {
+                        <MudChip T="string" Size="Size.Small">@w.ToString("0.#") kg</MudChip>
+                    }
+                </MudStack>
+            </div>
+        </MudStack>
         @if (!string.IsNullOrWhiteSpace(_student.Goals))
         {
             <MudAlert Severity="Severity.Info" Class="mb-4">@_student.Goals</MudAlert>
@@ -38,27 +79,37 @@
             <MudItem xs="12" md="6">
                 <MudCard>
                     <MudCardHeader>
-                        <CardHeaderContent><MudText Typo="Typo.h6">Ficha de observações</MudText></CardHeaderContent>
+                        <CardHeaderContent><MudText Typo="Typo.h6">Apontamentos de saúde</MudText></CardHeaderContent>
                         <CardHeaderActions>
-                            <PermissionView Permission="health.write">
-                                <MudIconButton Icon="@Icons.Material.Filled.Add" OnClick="OpenAddObservation" />
+                            <PermissionView Permission="studentficha.write">
+                                <MudIconButton Icon="@Icons.Material.Filled.Add" OnClick="OpenAddApportment" />
                             </PermissionView>
                         </CardHeaderActions>
                     </MudCardHeader>
                     <MudCardContent>
-                        @if (_student.HealthObservations.Count == 0)
+                        @if (_student.HealthApportments.Count == 0)
                         {
-                            <MudText Typo="Typo.body2">Sem observações.</MudText>
+                            <MudText Typo="Typo.body2">Sem apontamentos.</MudText>
                         }
                         else
                         {
-                            <MudList T="HealthObservationDto" Dense>
-                                @foreach (var o in _student.HealthObservations)
+                            <MudList T="HealthApportmentDto" Dense>
+                                @foreach (var a in _student.HealthApportments)
                                 {
-                                    <MudListItem T="HealthObservationDto"
-                                                 Icon="@(o.Kind == HealthObservationKind.HealthIssue ? Icons.Material.Filled.HealthAndSafety : Icons.Material.Filled.Notes)">
-                                        <MudText Typo="Typo.subtitle2">@o.Title</MudText>
-                                        <MudText Typo="Typo.body2">@o.Detail</MudText>
+                                    <MudListItem T="HealthApportmentDto" Icon="@Icons.Material.Filled.HealthAndSafety">
+                                        <MudStack Row AlignItems="AlignItems.Center">
+                                            <div style="flex:1">
+                                                <MudText Typo="Typo.subtitle2">@a.BodyPartName: @a.ProblemTypeName</MudText>
+                                                @if (!string.IsNullOrWhiteSpace(a.Observation))
+                                                {
+                                                    <MudText Typo="Typo.body2">Obs: @a.Observation</MudText>
+                                                }
+                                            </div>
+                                            <PermissionView Permission="studentficha.write">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                               Color="Color.Error" OnClick="@(() => RemoveApportment(a))" />
+                                            </PermissionView>
+                                        </MudStack>
                                     </MudListItem>
                                 }
                             </MudList>
@@ -186,15 +237,81 @@
         }
     }
 
-    private async Task OpenAddObservation()
+    private async Task OpenAddApportment()
     {
-        var parameters = new DialogParameters<Dialogs.AddHealthObservationDialog>
-        {
-            { x => x.StudentProfileId, StudentId },
-        };
-        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AddHealthObservationDialog>("Nova observação", parameters);
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.ApportmentDialog>("Novo apontamento de saúde");
         DialogResult? r = await dlg.Result;
-        if (r is not null && !r.Canceled) await LoadAsync();
+        if (r is null || r.Canceled || r.Data is not AddApportmentRequest req)
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.AddStudentApportmentAsync(StudentId, req, CancellationToken.None);
+            Snackbar.Add("Apontamento adicionado.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao adicionar apontamento: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RemoveApportment(HealthApportmentDto apport)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Remover apontamento",
+            $"Remover \"{apport.BodyPartName}: {apport.ProblemTypeName}\"?",
+            yesText: "Remover", cancelText: "Cancelar");
+        if (confirm != true)
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.RemoveStudentApportmentAsync(StudentId, apport.Id, CancellationToken.None);
+            Snackbar.Add("Apontamento removido.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao remover: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenEditFicha()
+    {
+        if (_student is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<Dialogs.StudentFichaDialog> { { x => x.Student, _student } };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.StudentFichaDialog>("Editar ficha", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is null || r.Canceled || r.Data is not UpdateStudentFichaRequest req)
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.UpdateStudentFichaAsync(StudentId, req, CancellationToken.None);
+            Snackbar.Add("Ficha atualizada.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao atualizar ficha: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenLogs()
+    {
+        var parameters = new DialogParameters<Dialogs.StudentEditLogsDialog> { { x => x.StudentProfileId, StudentId } };
+        await DialogService.ShowAsync<Dialogs.StudentEditLogsDialog>("Histórico de edições", parameters);
     }
 
     private async Task OpenAddNote()

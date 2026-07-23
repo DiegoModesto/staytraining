@@ -1,0 +1,65 @@
+@using Web.Blazor.Training
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_fullName" Label="Nome" Required Class="mb-2" MaxLength="200" />
+        <MudTextField @bind-Value="_email" Label="E-mail" InputType="InputType.Email" Class="mb-2" MaxLength="320" />
+        <MudTextField @bind-Value="_phone" Label="Telefone de contato" Class="mb-2" MaxLength="40" />
+        <MudTextField @bind-Value="_emergencyPhone" Label="Telefone de emergência" Class="mb-2" MaxLength="40" />
+        <MudSelect T="BloodType" @bind-Value="_bloodType" Label="Tipo sanguíneo" Class="mb-2">
+            @foreach (var bt in BloodTypeDisplay.All)
+            {
+                <MudSelectItem T="BloodType" Value="bt">@BloodTypeDisplay.Label(bt)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudStack Row Class="mb-2">
+            <MudNumericField @bind-Value="_heightCm" Label="Altura (cm)" Min="30" Max="300" />
+            <MudNumericField @bind-Value="_weightKg" Label="Peso (kg)" Min="20" Max="400" Format="F1" />
+        </MudStack>
+        <MudTextField @bind-Value="_goals" Label="Objetivos" Lines="2" MaxLength="4000" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialog.Cancel())">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public StudentDetailDto Student { get; set; } = default!;
+
+    private string _fullName = string.Empty;
+    private string? _email;
+    private string? _phone;
+    private string? _emergencyPhone;
+    private BloodType _bloodType;
+    private int? _heightCm;
+    private decimal? _weightKg;
+    private string? _goals;
+    private bool _busy;
+
+    protected override void OnInitialized()
+    {
+        _fullName = Student.FullName;
+        _email = Student.Email;
+        _phone = Student.Phone;
+        _emergencyPhone = Student.EmergencyPhone;
+        _bloodType = Student.BloodType;
+        _heightCm = Student.HeightCm;
+        _weightKg = Student.WeightKg;
+        _goals = Student.Goals;
+    }
+
+    private void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_fullName))
+        {
+            return;
+        }
+
+        _busy = true;
+        Dialog.Close(DialogResult.Ok(new UpdateStudentFichaRequest(
+            _fullName.Trim(), _email, _phone, _emergencyPhone, _bloodType, _heightCm, _weightKg, _goals)));
+    }
+}

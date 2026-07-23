@@ -1,10 +1,11 @@
-using Application.Students.AddHealthObservation;
 using Application.Students.AddStudentNote;
+using Application.Students.Ficha;
 using Application.Students.GetById;
 using Application.Students.List;
 using Application.Students.ListNotes;
 using Application.Students.Register;
 using Application.UnitTests.Support;
+using Domain.HealthCatalog;
 using Domain.Students;
 using Shouldly;
 
@@ -40,9 +41,15 @@ public class StudentTests
         db.StudentProfiles.Add(new StudentProfile
         {
             Id = studentId, TenantId = tenant, UserId = Guid.NewGuid(), FullName = "Rita",
-            HealthObservations =
+            HealthApportments =
             [
-                new HealthObservation { Id = Guid.NewGuid(), StudentProfileId = studentId, Kind = HealthObservationKind.HealthIssue, Title = "Ombro", CreatedAt = DateTimeOffset.UtcNow },
+                new HealthApportment
+                {
+                    Id = Guid.NewGuid(), StudentProfileId = studentId,
+                    BodyPartId = Guid.NewGuid(), BodyPartName = "Ombro",
+                    ProblemTypeId = Guid.NewGuid(), ProblemTypeName = "Deslocamento",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                },
             ],
         });
         await db.SaveChangesAsync();
@@ -50,10 +57,10 @@ public class StudentTests
         var list = new ListStudentsQueryHandler(db, TestHarness.User(tenant));
         (await list.Handle(new ListStudentsQuery(), CancellationToken.None)).Value.Count.ShouldBe(1);
 
-        var get = new GetStudentByIdQueryHandler(db, TestHarness.User(tenant));
+        var get = new GetStudentByIdQueryHandler(db, TestHarness.User(tenant), new FakeFileStorage());
         var detail = await get.Handle(new GetStudentByIdQuery(studentId), CancellationToken.None);
         detail.IsSuccess.ShouldBeTrue();
-        detail.Value.HealthObservations.Count.ShouldBe(1);
+        detail.Value.HealthApportments.Count.ShouldBe(1);
     }
 
     [Fact]
@@ -61,7 +68,7 @@ public class StudentTests
     {
         var tenant = Guid.NewGuid();
         await using var db = TestHarness.NewContext();
-        var get = new GetStudentByIdQueryHandler(db, TestHarness.User(tenant));
+        var get = new GetStudentByIdQueryHandler(db, TestHarness.User(tenant), new FakeFileStorage());
 
         var result = await get.Handle(new GetStudentByIdQuery(Guid.NewGuid()), CancellationToken.None);
         result.IsFailure.ShouldBeTrue();
@@ -69,24 +76,32 @@ public class StudentTests
     }
 
     [Fact]
-    public async Task AddHealthObservation_persists_and_notFound_when_student_absent()
+    public async Task AdminAddApportment_persists_denormalized_and_writes_edit_log()
     {
         var tenant = Guid.NewGuid();
         var studentId = Guid.NewGuid();
         await using var db = TestHarness.NewContext();
         db.StudentProfiles.Add(new StudentProfile { Id = studentId, TenantId = tenant, UserId = Guid.NewGuid(), FullName = "Rita" });
+        var bodyPartId = Guid.NewGuid();
+        var problemTypeId = Guid.NewGuid();
+        db.BodyParts.Add(new BodyPart { Id = bodyPartId, Name = "Ombro", SortOrder = 0, CreatedAt = DateTimeOffset.UtcNow });
+        db.ProblemTypes.Add(new ProblemType { Id = problemTypeId, BodyPartId = bodyPartId, Name = "Deslocamento", SortOrder = 0, CreatedAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
 
-        var handler = new AddHealthObservationCommandHandler(db, TestHarness.User(tenant));
+        var handler = new AddStudentApportmentCommandHandler(db, TestHarness.User(tenant, Guid.NewGuid(), "Diego Modesto"));
 
         var ok = await handler.Handle(
-            new AddHealthObservationCommand(studentId, HealthObservationKind.ProfessorNote, "Nota", "detalhe"),
+            new AddStudentApportmentCommand(studentId, bodyPartId, problemTypeId, "sem cirurgia"),
             CancellationToken.None);
         ok.IsSuccess.ShouldBeTrue();
-        db.HealthObservations.Count().ShouldBe(1);
+
+        HealthApportment saved = db.HealthApportments.Single();
+        saved.BodyPartName.ShouldBe("Ombro");
+        saved.ProblemTypeName.ShouldBe("Deslocamento");
+        db.StudentEditLogs.Count().ShouldBe(1); // admin edit is audited
 
         var missing = await handler.Handle(
-            new AddHealthObservationCommand(Guid.NewGuid(), HealthObservationKind.HealthIssue, "X", null),
+            new AddStudentApportmentCommand(Guid.NewGuid(), bodyPartId, problemTypeId, null),
             CancellationToken.None);
         missing.IsFailure.ShouldBeTrue();
         missing.Error.Code.ShouldBe("Student.NotFound");

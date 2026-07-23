@@ -1,7 +1,5 @@
 namespace Web.Blazor.Training;
 
-public enum HealthObservationKind { HealthIssue = 0, ProfessorNote = 1 }
-
 // Mirrors Domain.Profiles.BloodType (numeric JSON).
 public enum BloodType { Unknown = 0, APositive, ANegative, BPositive, BNegative, AbPositive, AbNegative, OPositive, ONegative }
 
@@ -59,8 +57,9 @@ public sealed record WorkoutTemplateListItemDto(
 
 public sealed record StudentListItemDto(Guid Id, Guid UserId, string FullName, string? Email);
 
-public sealed record HealthObservationDto(
-    Guid Id, HealthObservationKind Kind, string Title, string? Detail, DateTimeOffset CreatedAt);
+public sealed record HealthApportmentDto(
+    Guid Id, Guid BodyPartId, string BodyPartName, Guid ProblemTypeId, string ProblemTypeName,
+    string? Observation, DateTimeOffset CreatedAt);
 
 public sealed record StudentDetailDto(
     Guid Id,
@@ -69,12 +68,31 @@ public sealed record StudentDetailDto(
     string? Email,
     DateOnly? BirthDate,
     string? Goals,
-    IReadOnlyList<HealthObservationDto> HealthObservations);
+    string? Phone,
+    string? EmergencyPhone,
+    BloodType BloodType,
+    int? HeightCm,
+    decimal? WeightKg,
+    string? PhotoUrl,
+    IReadOnlyList<HealthApportmentDto> HealthApportments);
 
 public sealed record RegisterStudentRequest(
     Guid UserId, string FullName, string? Email, DateOnly? BirthDate, string? Goals);
 
-public sealed record AddHealthObservationRequest(HealthObservationKind Kind, string Title, string? Detail);
+public sealed record AddApportmentRequest(Guid BodyPartId, Guid ProblemTypeId, string? Observation);
+
+public sealed record UpdateStudentFichaRequest(
+    string FullName, string? Email, string? Phone, string? EmergencyPhone,
+    BloodType BloodType, int? HeightCm, decimal? WeightKg, string? Goals);
+
+public sealed record StudentEditLogDto(
+    Guid Id, Guid EditorUserId, string EditorName, string Action, string Detail, DateTimeOffset CreatedAt);
+
+// Health-issue catalog (body part -> problem types), admin-managed under Configurações.
+public sealed record ProblemTypeDto(Guid Id, string Name, int SortOrder);
+public sealed record BodyPartDto(Guid Id, string Name, int SortOrder, IReadOnlyList<ProblemTypeDto> ProblemTypes);
+public sealed record CatalogNameRequest(string Name);
+public sealed record CreateProblemTypeRequest(Guid BodyPartId, string Name);
 
 public sealed record StudentNoteDto(
     Guid Id, Guid AuthorUserId, string AuthorName, string Content, DateTimeOffset CreatedAt);

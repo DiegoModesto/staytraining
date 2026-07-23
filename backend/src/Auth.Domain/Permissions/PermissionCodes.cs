@@ -30,6 +30,7 @@ public static class PermissionCodes
     public const string StudentManage = "student.manage";
     public const string HealthRead = "health.read";
     public const string HealthWrite = "health.write";
+    public const string StudentFichaWrite = "studentficha.write";
     public const string SessionWrite = "session.write";
     public const string NoteWrite = "note.write";
     public const string ReportRead = "report.read";
@@ -62,6 +63,7 @@ public static class PermissionCodes
         (StudentManage, "Register and manage students"),
         (HealthRead, "Read student health observations"),
         (HealthWrite, "Create and modify student health observations"),
+        (StudentFichaWrite, "Edit any student's ficha as an administrator (audited)"),
         (SessionWrite, "Start and complete workout sessions"),
         (NoteWrite, "Create exercise notes"),
         (ReportRead, "Read training reports"),
@@ -88,6 +90,6 @@ public static class PermissionCodes
     /// </summary>
     public static IReadOnlyCollection<string> Admin { get; } =
     [
-        ModalityRead, ModalityWrite, MuscleWrite, HealthCatalogRead, HealthCatalogWrite,
+        ModalityRead, ModalityWrite, MuscleWrite, HealthCatalogRead, HealthCatalogWrite, StudentFichaWrite,
     ];
 }

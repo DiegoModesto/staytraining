@@ -27,7 +27,25 @@ public interface ITrainingApiClient
     Task<IReadOnlyList<StudentListItemDto>> ListStudentsAsync(CancellationToken ct);
     Task<StudentDetailDto?> GetStudentAsync(Guid id, CancellationToken ct);
     Task<Guid> RegisterStudentAsync(RegisterStudentRequest request, CancellationToken ct);
-    Task<Guid> AddHealthObservationAsync(Guid studentId, AddHealthObservationRequest request, CancellationToken ct);
+
+    // Admin ficha editing (audited)
+    Task UpdateStudentFichaAsync(Guid studentId, UpdateStudentFichaRequest request, CancellationToken ct);
+    Task<Guid> AddStudentApportmentAsync(Guid studentId, AddApportmentRequest request, CancellationToken ct);
+    Task RemoveStudentApportmentAsync(Guid studentId, Guid apportmentId, CancellationToken ct);
+    Task<IReadOnlyList<StudentEditLogDto>> ListStudentEditLogsAsync(Guid studentId, CancellationToken ct);
+
+    // Student self-service apports (own ficha)
+    Task<Guid> AddMyApportmentAsync(AddApportmentRequest request, CancellationToken ct);
+    Task RemoveMyApportmentAsync(Guid apportmentId, CancellationToken ct);
+
+    // Health-issue catalog
+    Task<IReadOnlyList<BodyPartDto>> ListHealthCatalogAsync(CancellationToken ct);
+    Task<Guid> CreateBodyPartAsync(CatalogNameRequest request, CancellationToken ct);
+    Task UpdateBodyPartAsync(Guid id, CatalogNameRequest request, CancellationToken ct);
+    Task DeleteBodyPartAsync(Guid id, CancellationToken ct);
+    Task<Guid> CreateProblemTypeAsync(CreateProblemTypeRequest request, CancellationToken ct);
+    Task UpdateProblemTypeAsync(Guid id, CatalogNameRequest request, CancellationToken ct);
+    Task DeleteProblemTypeAsync(Guid id, CancellationToken ct);
 
     Task<IReadOnlyList<StudentNoteDto>> ListStudentNotesAsync(Guid studentId, CancellationToken ct);
     Task<Guid> AddStudentNoteAsync(Guid studentId, AddStudentNoteRequest request, CancellationToken ct);
