@@ -106,6 +106,13 @@ internal sealed class SeedDataHostedService(
             db.StudentProfiles.Add(rita);
             await db.SaveChangesAsync(ct);
         }
+        else if (rita.FullName != "Rita Sibele" || rita.Email != "ritasouzamodesto@gmail.com")
+        {
+            // Reconcile canonical name/email on a previously-seeded profile.
+            rita.FullName = "Rita Sibele";
+            rita.Email = "ritasouzamodesto@gmail.com";
+            await db.SaveChangesAsync(ct);
+        }
 
         bool ritaHasWorkout = await db.Workouts
             .AnyAsync(w => w.TenantId == tenantId && w.OwnerStudentId == RitaStudentUserId && !w.IsDeleted, ct);
