@@ -165,6 +165,36 @@ public class ScheduleCalendarTests
         item.JustificationReason.ShouldBe("viagem");
     }
 
+    [Fact]
+    public async Task Completion_is_matched_per_day_not_per_week()
+    {
+        var tenant = Guid.NewGuid();
+        var me = Guid.NewGuid();
+        await using var db = TestHarness.NewContext();
+        var workoutId = await SeedWorkout(db, tenant, me);
+
+        // Same workout scheduled Mon and Wed; only Mon has a completed session.
+        var mon = new DateOnly(2026, 1, 5);
+        var wed = new DateOnly(2026, 1, 7);
+        db.WorkoutSchedules.Add(new WorkoutSchedule { Id = Guid.NewGuid(), TenantId = tenant, StudentId = me, WorkoutId = workoutId, ScheduledDate = mon, CreatedAt = DateTimeOffset.UtcNow });
+        db.WorkoutSchedules.Add(new WorkoutSchedule { Id = Guid.NewGuid(), TenantId = tenant, StudentId = me, WorkoutId = workoutId, ScheduledDate = wed, CreatedAt = DateTimeOffset.UtcNow });
+        db.WorkoutSessions.Add(new WorkoutSession
+        {
+            Id = Guid.NewGuid(), TenantId = tenant, StudentId = me, WorkoutId = workoutId,
+            StartedAt = new DateTimeOffset(mon.ToDateTime(new TimeOnly(17, 0)), TimeSpan.Zero),
+            CompletedAt = new DateTimeOffset(mon.ToDateTime(new TimeOnly(18, 0)), TimeSpan.Zero),
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var week = await new GetWeekScheduleQueryHandler(db, TestHarness.Student(tenant, me))
+            .Handle(new GetWeekScheduleQuery(new DateOnly(2026, 1, 5), null), CancellationToken.None);
+
+        week.IsSuccess.ShouldBeTrue();
+        week.Value.Single(x => x.Date == mon).Completed.ShouldBeTrue();
+        week.Value.Single(x => x.Date == wed).Completed.ShouldBeFalse(); // not completed just because Monday was
+    }
+
     private static async Task<Guid> SeedSchedule(
         Infra.Database.ApplicationDbContext db, Guid tenant, Guid student, DateOnly date)
     {

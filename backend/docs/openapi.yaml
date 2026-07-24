@@ -725,13 +725,53 @@ paths:
       tags: [Schedule]
       operationId: scheduleWorkout
       summary: Agendar treino
-      description: "**Permissão:** `session.write`."
-      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [workoutId, date], properties: { workoutId: { type: string, format: uuid }, date: { type: string, format: date } } } } } }
+      description: "Agenda um treino num dia. `studentId` (opcional) só é honrado para gestor (`student.manage`, professor) — agenda PARA o aluno; senão usa o próprio caller. **Permissão:** `session.write`."
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [workoutId, date], properties: { workoutId: { type: string, format: uuid }, date: { type: string, format: date }, studentId: { type: [string, "null"], format: uuid } } } } } }
       responses:
         "201": { $ref: "#/components/responses/Created" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /schedule/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    delete:
+      tags: [Schedule]
+      operationId: deleteSchedule
+      summary: Remover agendamento
+      description: "Soft-delete. Dono do agendamento ou gestor. **Permissão:** `session.write`."
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /schedule/{id}/skip:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    post:
+      tags: [Schedule]
+      operationId: justifySkipSchedule
+      summary: Justificar treino não realizado
+      description: "Marca o agendamento como Skipped com motivo + observação (aluno; dono). **Permissão:** `session.write`."
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reason], properties: { reason: { type: string, maxLength: 40, description: "feriado | academia_fechada | doenca | viagem | lesao | outro" }, note: { type: [string, "null"], maxLength: 1000 } } } } } }
+      responses:
+        "204": { description: No Content }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /schedule/{id}/swap:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    post:
+      tags: [Schedule]
+      operationId: swapScheduleDay
+      summary: Trocar treino de dia
+      description: "Move o treino para `newDate`: cria um novo agendamento pendente e marca o original como Swapped. Retorna o id do novo. **Permissão:** `session.write`."
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [newDate], properties: { newDate: { type: string, format: date }, reason: { type: [string, "null"], maxLength: 40 }, note: { type: [string, "null"], maxLength: 1000 } } } } } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------- Reports ----------------
   /reports/weekly:
@@ -1366,6 +1406,11 @@ components:
         workoutId: { type: string, format: uuid }
         workoutName: { type: string }
         completed: { type: boolean, description: "Há uma sessão concluída deste treino na semana (fica só-leitura no app)." }
+        status: { type: string, enum: [Pending, Skipped, Swapped], description: "Conclusão é derivada de sessão (completed); status cobre Skipped/Swapped." }
+        justificationReason: { type: [string, "null"] }
+        justificationNote: { type: [string, "null"] }
+        swappedToDate: { type: [string, "null"], format: date, description: "Se trocado, o novo dia." }
+        swappedFromScheduleId: { type: [string, "null"], format: uuid }
     Question:
       type: object
       properties:

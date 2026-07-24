@@ -114,61 +114,77 @@ internal sealed class SeedDataHostedService(
             await db.SaveChangesAsync(ct);
         }
 
-        bool ritaHasWorkout = await db.Workouts
-            .AnyAsync(w => w.TenantId == tenantId && w.OwnerStudentId == RitaStudentUserId && !w.IsDeleted, ct);
+        // Both the student (Rita) and the professor-as-trainee (Diego) get their own workouts.
+        await EnsureWorkoutsFromTemplatesAsync(db, tenantId, RitaStudentUserId, ct);
+        await EnsureWorkoutsFromTemplatesAsync(db, tenantId, AdminUserId, ct);
+    }
 
-        if (!ritaHasWorkout)
+    /// <summary>Gives <paramref name="ownerId"/> one workout per system-default template (idempotent).</summary>
+    private static async Task EnsureWorkoutsFromTemplatesAsync(
+        IApplicationDbContext db, Guid tenantId, Guid ownerId, CancellationToken ct)
+    {
+        bool hasWorkout = await db.Workouts
+            .AnyAsync(w => w.TenantId == tenantId && w.OwnerStudentId == ownerId && !w.IsDeleted, ct);
+        if (hasWorkout)
         {
-            // One workout per system-default template, so the student has variety across modalities.
-            List<WorkoutTemplate> templates = await db.WorkoutTemplates
-                .Include(t => t.Items)
-                .Where(t => t.TenantId == tenantId && t.IsSystemDefault)
-                .OrderBy(t => t.Name)
-                .ToListAsync(ct);
+            return;
+        }
 
-            foreach (WorkoutTemplate template in templates)
+        List<WorkoutTemplate> templates = await db.WorkoutTemplates
+            .Include(t => t.Items)
+            .Where(t => t.TenantId == tenantId && t.IsSystemDefault)
+            .OrderBy(t => t.Name)
+            .ToListAsync(ct);
+
+        foreach (WorkoutTemplate template in templates)
+        {
+            var workout = new Workout
             {
-                var workout = new Workout
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                OwnerStudentId = ownerId,
+                SourceTemplateId = template.Id,
+                Name = template.Name,
+                ModalityId = template.ModalityId,
+                CreatedAt = DateTimeOffset.UtcNow,
+            };
+            foreach (TemplateItem item in template.Items.OrderBy(i => i.Order))
+            {
+                workout.Items.Add(new WorkoutItem
                 {
                     Id = Guid.NewGuid(),
-                    TenantId = tenantId,
-                    OwnerStudentId = RitaStudentUserId,
-                    SourceTemplateId = template.Id,
-                    Name = template.Name,
-                    ModalityId = template.ModalityId,
-                    CreatedAt = DateTimeOffset.UtcNow,
-                };
-                foreach (TemplateItem item in template.Items.OrderBy(i => i.Order))
-                {
-                    workout.Items.Add(new WorkoutItem
-                    {
-                        Id = Guid.NewGuid(),
-                        WorkoutId = workout.Id,
-                        ExerciseId = item.ExerciseId,
-                        Order = item.Order,
-                        SectionLabel = item.SectionLabel,
-                        Sets = item.Sets,
-                        Reps = item.Reps,
-                        RestSeconds = item.RestSeconds,
-                        ProfessorComment = item.CreatorNotes,
-                    });
-                }
-                db.Workouts.Add(workout);
+                    WorkoutId = workout.Id,
+                    ExerciseId = item.ExerciseId,
+                    Order = item.Order,
+                    SectionLabel = item.SectionLabel,
+                    Sets = item.Sets,
+                    Reps = item.Reps,
+                    RestSeconds = item.RestSeconds,
+                    ProfessorComment = item.CreatorNotes,
+                });
             }
-
-            await db.SaveChangesAsync(ct);
+            db.Workouts.Add(workout);
         }
+
+        await db.SaveChangesAsync(ct);
     }
 
     /// <summary>
-    /// Seeds a full week of activity for Rita so every student screen has data: scheduled workouts
-    /// (some completed with sessions + exercise notes, some pending) and two questions to the
-    /// professor (one answered, one open). Idempotent — skipped once she already has a schedule.
+    /// Seeds a realistic Mon–Sat week for both the student (Rita) and the professor-as-trainee (Diego):
+    /// completed days (session + notes), a pending day, a justified skip and a swapped day; plus two
+    /// questions for Rita. Idempotent per user (skipped once the user already has a schedule).
     /// </summary>
     private async Task SeedDemoActivityAsync(IApplicationDbContext db, Guid tenantId, CancellationToken ct)
     {
+        await SeedWeekForAsync(db, tenantId, RitaStudentUserId, "Rita Sibele", withQuestions: true, ct);
+        await SeedWeekForAsync(db, tenantId, AdminUserId, "Diego Sanches", withQuestions: false, ct);
+    }
+
+    private async Task SeedWeekForAsync(
+        IApplicationDbContext db, Guid tenantId, Guid userId, string userName, bool withQuestions, CancellationToken ct)
+    {
         bool alreadySeeded = await db.WorkoutSchedules
-            .AnyAsync(s => s.TenantId == tenantId && s.StudentId == RitaStudentUserId && !s.IsDeleted, ct);
+            .AnyAsync(s => s.TenantId == tenantId && s.StudentId == userId && !s.IsDeleted, ct);
         if (alreadySeeded)
         {
             return;
@@ -176,7 +192,7 @@ internal sealed class SeedDataHostedService(
 
         List<Workout> workouts = await db.Workouts
             .Include(w => w.Items)
-            .Where(w => w.TenantId == tenantId && w.OwnerStudentId == RitaStudentUserId && !w.IsDeleted)
+            .Where(w => w.TenantId == tenantId && w.OwnerStudentId == userId && !w.IsDeleted)
             .OrderBy(w => w.Name)
             .ToListAsync(ct);
         if (workouts.Count == 0)
@@ -187,99 +203,117 @@ internal sealed class SeedDataHostedService(
         DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
         int dow = (int)today.DayOfWeek; // Sunday = 0
         DateOnly monday = today.AddDays(dow == 0 ? -6 : -(dow - 1));
+        Workout Pick(int i) => workouts[i % workouts.Count];
 
-        // (offset within the week, completed?) — 2 concluded + 2 pending.
-        (int offset, bool completed)[] plan = [(0, true), (1, true), (3, false), (5, false)];
+        // Mon/Tue completed (with session+notes), Wed justified skip, Thu pending.
+        AddCompletedDay(db, tenantId, userId, Pick(0), monday.AddDays(0));
+        AddCompletedDay(db, tenantId, userId, Pick(1), monday.AddDays(1));
+        db.WorkoutSchedules.Add(NewSchedule(Guid.NewGuid(), tenantId, userId, Pick(2).Id, monday.AddDays(2),
+            ScheduleStatus.Skipped, reason: "feriado", note: "Feriado nacional."));
+        db.WorkoutSchedules.Add(NewSchedule(Guid.NewGuid(), tenantId, userId, Pick(3).Id, monday.AddDays(3)));
 
-        for (int i = 0; i < plan.Length; i++)
+        // Fri swapped to Sat: original (Fri) marked Swapped, a new pending entry on Sat.
+        Guid friId = Guid.NewGuid();
+        Guid satId = Guid.NewGuid();
+        db.WorkoutSchedules.Add(NewSchedule(satId, tenantId, userId, Pick(4).Id, monday.AddDays(5),
+            ScheduleStatus.Pending, swappedFrom: friId));
+        WorkoutSchedule fri = NewSchedule(friId, tenantId, userId, Pick(4).Id, monday.AddDays(4),
+            ScheduleStatus.Swapped, reason: "troca", note: "Aparelhos de peito ocupados.");
+        fri.SwappedToScheduleId = satId;
+        db.WorkoutSchedules.Add(fri);
+
+        if (withQuestions)
         {
-            (int offset, bool completed) = plan[i];
-            Workout workout = workouts[i % workouts.Count];
-            DateOnly date = monday.AddDays(offset);
+            Workout firstWorkout = workouts[0];
+            Guid? firstExerciseId = firstWorkout.Items.OrderBy(it => it.Order).FirstOrDefault()?.ExerciseId;
 
-            db.WorkoutSchedules.Add(new WorkoutSchedule
-            {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                StudentId = RitaStudentUserId,
-                WorkoutId = workout.Id,
-                ScheduledDate = date,
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow,
-            });
-
-            if (!completed)
-            {
-                continue;
-            }
-
-            var startedAt = new DateTimeOffset(date.ToDateTime(new TimeOnly(17, 0)), TimeSpan.Zero);
-            var session = new WorkoutSession
-            {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                StudentId = RitaStudentUserId,
-                WorkoutId = workout.Id,
-                StartedAt = startedAt,
-                CompletedAt = startedAt.AddMinutes(55),
-                CompletionRating = 4,
-                OverallComment = "Bom treino, energia ok.",
-                CreatedAt = startedAt,
-            };
-            foreach (WorkoutItem item in workout.Items.OrderBy(it => it.Order).Take(2))
-            {
-                session.Notes.Add(new ExerciseNote
-                {
-                    Id = Guid.NewGuid(),
-                    WorkoutSessionId = session.Id,
-                    WorkoutItemId = item.Id,
-                    ExerciseId = item.ExerciseId,
-                    LoadKg = 20m,
-                    PainFlag = false,
-                    Comment = "Execução tranquila.",
-                    PerformedSets = item.Sets,
-                    PerformedReps = item.Reps,
-                    CreatedAt = startedAt.AddMinutes(20),
-                });
-            }
-            db.WorkoutSessions.Add(session);
-        }
-
-        // Two questions to the professor: one answered, one open.
-        Workout firstWorkout = workouts[0];
-        Guid? firstExerciseId = firstWorkout.Items.OrderBy(it => it.Order).FirstOrDefault()?.ExerciseId;
-
-        db.Questions.Add(new Question
-        {
-            Id = Guid.NewGuid(),
-            TenantId = tenantId,
-            StudentId = RitaStudentUserId,
-            StudentName = "Rita Sibele",
-            WorkoutId = firstWorkout.Id,
-            Text = "Professor, posso aumentar a carga do agachamento na próxima semana?",
-            AnswerText = "Pode sim, suba 2,5kg mantendo a técnica.",
-            AnsweredByUserId = AdminUserId,
-            AnsweredByName = "Diego Sanches",
-            AnsweredAt = DateTimeOffset.UtcNow.AddDays(-1),
-            CreatedAt = DateTimeOffset.UtcNow.AddDays(-2),
-        });
-
-        if (firstExerciseId is not null)
-        {
             db.Questions.Add(new Question
             {
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
-                StudentId = RitaStudentUserId,
-                StudentName = "Rita Sibele",
-                ExerciseId = firstExerciseId,
-                Text = "Qual a pegada ideal para este exercício?",
-                CreatedAt = DateTimeOffset.UtcNow.AddHours(-3),
+                StudentId = userId,
+                StudentName = userName,
+                WorkoutId = firstWorkout.Id,
+                Text = "Professor, posso aumentar a carga do agachamento na próxima semana?",
+                AnswerText = "Pode sim, suba 2,5kg mantendo a técnica.",
+                AnsweredByUserId = AdminUserId,
+                AnsweredByName = "Diego Sanches",
+                AnsweredAt = DateTimeOffset.UtcNow.AddDays(-1),
+                CreatedAt = DateTimeOffset.UtcNow.AddDays(-2),
             });
+
+            if (firstExerciseId is not null)
+            {
+                db.Questions.Add(new Question
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    StudentId = userId,
+                    StudentName = userName,
+                    ExerciseId = firstExerciseId,
+                    Text = "Qual a pegada ideal para este exercício?",
+                    CreatedAt = DateTimeOffset.UtcNow.AddHours(-3),
+                });
+            }
         }
 
         await db.SaveChangesAsync(ct);
-        logger.LogInformation("Seed: demo activity (schedule/sessions/notes/questions) ensured for Rita.");
+        logger.LogInformation("Seed: Mon–Sat week ensured for {User}.", userName);
+    }
+
+    private static WorkoutSchedule NewSchedule(
+        Guid id, Guid tenantId, Guid userId, Guid workoutId, DateOnly date,
+        ScheduleStatus status = ScheduleStatus.Pending,
+        string? reason = null, string? note = null, Guid? swappedFrom = null) => new()
+    {
+        Id = id,
+        TenantId = tenantId,
+        StudentId = userId,
+        WorkoutId = workoutId,
+        ScheduledDate = date,
+        Status = status,
+        JustificationReason = reason,
+        JustificationNote = note,
+        SwappedFromScheduleId = swappedFrom,
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow,
+    };
+
+    private static void AddCompletedDay(
+        IApplicationDbContext db, Guid tenantId, Guid userId, Workout workout, DateOnly date)
+    {
+        db.WorkoutSchedules.Add(NewSchedule(Guid.NewGuid(), tenantId, userId, workout.Id, date));
+
+        var startedAt = new DateTimeOffset(date.ToDateTime(new TimeOnly(17, 0)), TimeSpan.Zero);
+        var session = new WorkoutSession
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            StudentId = userId,
+            WorkoutId = workout.Id,
+            StartedAt = startedAt,
+            CompletedAt = startedAt.AddMinutes(55),
+            CompletionRating = 4,
+            OverallComment = "Bom treino, energia ok.",
+            CreatedAt = startedAt,
+        };
+        foreach (WorkoutItem item in workout.Items.OrderBy(it => it.Order).Take(2))
+        {
+            session.Notes.Add(new ExerciseNote
+            {
+                Id = Guid.NewGuid(),
+                WorkoutSessionId = session.Id,
+                WorkoutItemId = item.Id,
+                ExerciseId = item.ExerciseId,
+                LoadKg = 20m,
+                PainFlag = false,
+                Comment = "Execução tranquila.",
+                PerformedSets = item.Sets,
+                PerformedReps = item.Reps,
+                CreatedAt = startedAt.AddMinutes(20),
+            });
+        }
+        db.WorkoutSessions.Add(session);
     }
 
     private static async Task<Dictionary<string, Guid>> SeedMuscleGroupsAsync(

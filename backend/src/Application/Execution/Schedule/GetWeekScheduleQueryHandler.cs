@@ -49,12 +49,6 @@ public sealed class GetWeekScheduleQueryHandler(
                     s.ScheduledDate,
                     WorkoutId = w.Id,
                     w.Name,
-                    Completed = dbContext.WorkoutSessions.Any(ss =>
-                        ss.WorkoutId == s.WorkoutId
-                        && ss.StudentId == studentId
-                        && ss.CompletedAt != null
-                        && ss.CompletedAt >= weekStartUtc
-                        && ss.CompletedAt < weekEndUtc),
                     s.Status,
                     s.JustificationReason,
                     s.JustificationNote,
@@ -68,13 +62,26 @@ public sealed class GetWeekScheduleQueryHandler(
                 })
             .ToListAsync(cancellationToken);
 
+        // Completed sessions in the week, matched to a schedule by workout AND the same day.
+        List<(Guid WorkoutId, DateTimeOffset When)> done = (await dbContext.WorkoutSessions
+                .Where(ss => ss.StudentId == studentId
+                    && (tenantId == null || ss.TenantId == tenantId)
+                    && ss.CompletedAt != null
+                    && ss.CompletedAt >= weekStartUtc
+                    && ss.CompletedAt < weekEndUtc)
+                .Select(ss => new { ss.WorkoutId, ss.CompletedAt })
+                .ToListAsync(cancellationToken))
+            .Select(x => (x.WorkoutId, x.CompletedAt!.Value))
+            .ToList();
+
         List<WeekScheduleItemResponse> items = raw
             .Select(r => new WeekScheduleItemResponse(
                 r.Id,
                 r.ScheduledDate,
                 r.WorkoutId,
                 r.Name,
-                r.Completed,
+                done.Any(d => d.WorkoutId == r.WorkoutId
+                    && DateOnly.FromDateTime(d.When.UtcDateTime) == r.ScheduledDate),
                 r.Status.ToString(),
                 r.JustificationReason,
                 r.JustificationNote,

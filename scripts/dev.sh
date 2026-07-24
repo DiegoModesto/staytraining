@@ -6,6 +6,7 @@
 #   backend  Sobe TODOS os serviços do backend via docker compose (build)
 #   mobile   Roda o app Flutter (uso: scripts/dev.sh mobile [android|ios] [deviceId])
 #   all      infra + migrate + backend  (stack completa)
+#   reset    Limpa TODA a base de negócio e re-semeia (scripts/reset-db.sh --yes)
 #   stop     Derruba todos os containers (docker compose down)
 #   status   Mostra containers e devices Flutter
 set -euo pipefail
@@ -87,6 +88,7 @@ case "${1:-help}" in
   backend) backend ;;
   mobile) shift; mobile "$@" ;;
   all) all ;;
+  reset) "$(dirname "$0")/reset-db.sh" --yes ;;
   stop) stop ;;
   status) status ;;
   *) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//' ;;
