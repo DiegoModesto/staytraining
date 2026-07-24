@@ -71,6 +71,8 @@ class _WorkoutsScreenState extends ConsumerState<WorkoutsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Creating from a professor template is a professor action; students don't see it.
+    final isStudent = ref.watch(myProfileProvider).asData?.value.isStudent ?? false;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Meus treinos'),
@@ -82,11 +84,13 @@ class _WorkoutsScreenState extends ConsumerState<WorkoutsScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createFromTemplate,
-        icon: const Icon(Icons.content_copy),
-        label: const Text('De um modelo'),
-      ),
+      floatingActionButton: isStudent
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _createFromTemplate,
+              icon: const Icon(Icons.content_copy),
+              label: const Text('De um modelo'),
+            ),
       body: FutureBuilder<List<WorkoutListItem>>(
         future: _future,
         builder: (context, snap) {
@@ -98,7 +102,7 @@ class _WorkoutsScreenState extends ConsumerState<WorkoutsScreen> {
           }
           final items = snap.data ?? [];
           if (items.isEmpty) {
-            return const Center(child: Text('Nenhum treino ainda. Crie um a partir de um modelo.'));
+            return const Center(child: Text('Nenhum treino ainda.'));
           }
           return RefreshIndicator(
             onRefresh: () async => _reload(),

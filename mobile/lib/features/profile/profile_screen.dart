@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -55,8 +56,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final p = await ref.read(trainingApiProvider).getMyProfile();
       _name.text = p.fullName;
       _email.text = p.email;
-      _phone.text = p.phone ?? '';
-      _emergency.text = p.emergencyPhone ?? '';
+      _phone.text = maskBrPhone(p.phone ?? '');
+      _emergency.text = maskBrPhone(p.emergencyPhone ?? '');
       _height.text = p.heightCm?.toString() ?? '';
       _weight.text = p.weightKg?.toString() ?? '';
       _bloodType = p.bloodType;
@@ -171,10 +172,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       const SizedBox(height: 8),
                       _field(_name, 'Nome *'),
-                      _field(_email, 'E-mail *', keyboard: TextInputType.emailAddress),
-                      _field(_phone, 'Telefone de contato *', keyboard: TextInputType.phone),
+                      _field(_email, 'E-mail',
+                          keyboard: TextInputType.emailAddress,
+                          readOnly: true,
+                          helper: 'O e-mail não pode ser editado.'),
+                      _field(_phone, 'Telefone de contato *',
+                          keyboard: TextInputType.phone, formatters: [BrPhoneInputFormatter()]),
                       if (_profile?.isStudent ?? false)
-                        _field(_emergency, 'Telefone de emergência *', keyboard: TextInputType.phone),
+                        _field(_emergency, 'Telefone de emergência *',
+                            keyboard: TextInputType.phone, formatters: [BrPhoneInputFormatter()]),
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: DropdownButtonFormField<BloodType>(
@@ -255,9 +261,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _field(TextEditingController c, String label, {TextInputType? keyboard}) => Padding(
+  Widget _field(
+    TextEditingController c,
+    String label, {
+    TextInputType? keyboard,
+    bool readOnly = false,
+    String? helper,
+    List<TextInputFormatter>? formatters,
+  }) =>
+      Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
-        child: TextField(controller: c, keyboardType: keyboard, decoration: InputDecoration(labelText: label)),
+        child: TextField(
+          controller: c,
+          keyboardType: keyboard,
+          readOnly: readOnly,
+          inputFormatters: formatters,
+          decoration: InputDecoration(
+            labelText: label,
+            helperText: helper,
+            filled: readOnly,
+            suffixIcon: readOnly ? const Icon(Icons.lock_outline, size: 18) : null,
+          ),
+        ),
       );
 
   Widget _apportsSection() {
@@ -385,5 +410,30 @@ class _AddApportmentDialogState extends State<_AddApportmentDialog> {
         ),
       ],
     );
+  }
+}
+
+/// Formats a raw phone string as a Brazilian number: (11) 99999-9999 (11 digits) or
+/// (11) 9999-9999 (10 digits). Non-digits are stripped first, so it is idempotent.
+String maskBrPhone(String input) {
+  final d = input.replaceAll(RegExp(r'\D'), '');
+  final digits = d.length > 11 ? d.substring(0, 11) : d;
+  if (digits.isEmpty) return '';
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i == 0) buffer.write('(');
+    if (i == 2) buffer.write(') ');
+    if (i == (digits.length > 10 ? 7 : 6)) buffer.write('-');
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
+}
+
+/// Live input mask for Brazilian phones, applied as the user types.
+class BrPhoneInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = maskBrPhone(newValue.text);
+    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
   }
 }

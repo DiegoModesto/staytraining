@@ -4,7 +4,8 @@ public sealed record WeekScheduleItemResponse(
     Guid ScheduleId,
     DateOnly Date,
     Guid WorkoutId,
-    string WorkoutName);
+    string WorkoutName,
+    bool Completed);
 
 public sealed record ExerciseNoteResponse(
     Guid Id,

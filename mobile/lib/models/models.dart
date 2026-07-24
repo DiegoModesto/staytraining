@@ -270,17 +270,25 @@ class SessionNote {
 }
 
 class WeekScheduleItem {
-  WeekScheduleItem({required this.scheduleId, required this.date, required this.workoutId, required this.workoutName});
+  WeekScheduleItem({
+    required this.scheduleId,
+    required this.date,
+    required this.workoutId,
+    required this.workoutName,
+    this.completed = false,
+  });
   final String scheduleId;
   final DateTime date;
   final String workoutId;
   final String workoutName;
+  final bool completed;
 
   factory WeekScheduleItem.fromJson(Map<String, dynamic> j) => WeekScheduleItem(
         scheduleId: j['scheduleId'] as String,
         date: DateTime.parse(j['date'] as String),
         workoutId: j['workoutId'] as String,
         workoutName: j['workoutName'] as String,
+        completed: (j['completed'] ?? false) as bool,
       );
 }
 

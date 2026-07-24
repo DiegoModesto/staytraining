@@ -19,6 +19,10 @@ public sealed class GetWeekScheduleQueryHandler(
         Guid studentId = query.StudentId ?? userContext.UserId;
         DateOnly weekEnd = query.WeekStart.AddDays(7);
 
+        // Completion is evaluated within the week window (DateTimeOffset bounds translate safely).
+        var weekStartUtc = new DateTimeOffset(query.WeekStart.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        var weekEndUtc = new DateTimeOffset(weekEnd.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+
         List<WeekScheduleItemResponse> items = await dbContext.WorkoutSchedules
             .Where(s => !s.IsDeleted
                 && s.StudentId == studentId
@@ -29,7 +33,17 @@ public sealed class GetWeekScheduleQueryHandler(
             .Join(dbContext.Workouts,
                 s => s.WorkoutId,
                 w => w.Id,
-                (s, w) => new WeekScheduleItemResponse(s.Id, s.ScheduledDate, w.Id, w.Name))
+                (s, w) => new WeekScheduleItemResponse(
+                    s.Id,
+                    s.ScheduledDate,
+                    w.Id,
+                    w.Name,
+                    dbContext.WorkoutSessions.Any(ss =>
+                        ss.WorkoutId == s.WorkoutId
+                        && ss.StudentId == studentId
+                        && ss.CompletedAt != null
+                        && ss.CompletedAt >= weekStartUtc
+                        && ss.CompletedAt < weekEndUtc)))
             .ToListAsync(cancellationToken);
 
         return items;

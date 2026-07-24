@@ -61,29 +61,25 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
     }
   }
 
-  Future<void> _saveNote(WorkoutItem item) async {
+  bool _hasNote(_NoteDraft d) =>
+      d.loadCtrl.text.trim().isNotEmpty ||
+      d.commentCtrl.text.trim().isNotEmpty ||
+      d.pain ||
+      d.performedSets != null ||
+      d.performedReps != null;
+
+  Map<String, dynamic> _noteBody(WorkoutItem item) {
     final d = _drafts[item.id]!;
-    final body = {
+    return {
       'workoutItemId': item.id,
       'exerciseId': item.exerciseId,
       'loadKg': double.tryParse(d.loadCtrl.text.replaceAll(',', '.')),
       'painFlag': d.pain,
       'painNote': null,
-      'comment': d.commentCtrl.text.isEmpty ? null : d.commentCtrl.text,
+      'comment': d.commentCtrl.text.trim().isEmpty ? null : d.commentCtrl.text.trim(),
       'performedSets': d.performedSets,
       'performedReps': d.performedReps,
     };
-    if (_offline) {
-      // Kept in the draft; persisted with the session on finish.
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anotação guardada (offline).')));
-      return;
-    }
-    try {
-      await ref.read(trainingApiProvider).upsertNote(_sessionId!, body);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anotação salva.')));
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Falha: $e')));
-    }
   }
 
   Future<void> _finish() async {
@@ -116,6 +112,12 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
       await ref.read(localStoreProvider).enqueueSession(session);
     } else {
       try {
+        // Comments/loads are batched here (saved on finish), not per exercise.
+        for (final it in _workout!.items) {
+          if (_hasNote(_drafts[it.id]!)) {
+            await api.upsertNote(_sessionId!, _noteBody(it));
+          }
+        }
         await api.completeSession(_sessionId!, _rating, _overallCtrl.text.isEmpty ? null : _overallCtrl.text);
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Falha ao concluir: $e')));
@@ -134,6 +136,11 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Execução'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Voltar',
+          onPressed: () => context.go('/workouts/${widget.workoutId}'),
+        ),
         actions: [if (_offline) const Padding(padding: EdgeInsets.all(16), child: Icon(Icons.cloud_off))],
       ),
       body: _loading
@@ -210,14 +217,6 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
             TextField(
               controller: d.commentCtrl,
               decoration: const InputDecoration(labelText: 'Comentário', isDense: true),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => _saveNote(item),
-                icon: const Icon(Icons.save),
-                label: const Text('Salvar anotação'),
-              ),
             ),
           ],
         ),

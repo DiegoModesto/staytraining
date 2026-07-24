@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/di/providers.dart';
 import '../../core/ui/responsive.dart';
@@ -14,7 +15,14 @@ class QuestionsScreen extends ConsumerWidget {
     final questions = ref.watch(myQuestionsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Minhas perguntas')),
+      appBar: AppBar(
+        title: const Text('Minhas perguntas'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Voltar',
+          onPressed: () => context.go('/profile'),
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(myQuestionsProvider.future),
         child: questions.when(
