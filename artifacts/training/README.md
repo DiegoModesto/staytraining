@@ -16,8 +16,16 @@ cadastrar exercícios/modelos e para produzir mídias (ver também `artifacts/to
 |---|---|---|
 | Musculação | `#4EA8FF` | séries × repetições · descanso |
 | Funcional | `#2FD37A` | séries × repetições (ou tempo) · descanso curto |
+| Calistenia | `#4EA8FF` | séries × repetições (ou progressões/tempo) |
 | Boxe | `#FF4757` | rounds · trabalho/descanso |
+| Muay Thai | `#FF4757` | rounds · trabalho/descanso |
+| Jiu-Jitsu | `#FF4757` | rounds/drills · tempo |
+| Natação | `#4EA8FF` | distância/tempo · séries (tiros) |
 | Aeróbico | `#FFB020` | tempo/intervalos (trabalho/descanso × rounds) |
+
+> As modalidades de referência acima cobrem o catálogo em `exercicios.md`. No app, as modalidades
+> ativas vêm da tabela `Modalities` (seed/admin) — adicionar Calistenia/Muay Thai/Jiu-Jitsu/Natação
+> lá é um passo separado de seed.
 
 > Convenção de prescrição: **séries × repetições · descanso(s)**. Para intervalado/aeróbico:
 > **trabalho(s) / descanso(s) × rounds**.
