@@ -7,7 +7,8 @@ anotar carga/dor/comentários por exercício, agenda semanal, relatório e uso o
 
 - **Flutter** + **Riverpod** (providers manuais — sem codegen), **go_router**.
 - **dio** (HTTP), **sqflite** (cache/fila offline — SQL manual, sem codegen).
-- **flutter_appauth** (login OIDC no Auth.API/OpenIddict) + **flutter_secure_storage**.
+- **flutter_secure_storage** (tokens) — login por e-mail/senha (OpenIddict password grant via `dio`).
+- **google_fonts** (design system "VOLT": Archivo + Hanken Grotesk).
 - **youtube_player_flutter** / **cached_network_image** / **video_player** (mídia dos exercícios).
 - **flutter_local_notifications** (lembrete offline de treino pendente).
 
@@ -38,11 +39,10 @@ anotar carga/dor/comentários por exercício, agenda semanal, relatório e uso o
 
 ### Login
 
-- **OIDC**: requer um cliente OpenIddict `mobile-app` (public/PKCE) cadastrado no Auth.API com o
-  redirect `com.staytraining.app://oauth`, e o esquema registrado no `AndroidManifest`/`Info.plist`
-  (o `flutter_appauth` documenta como). O usuário precisa ter o papel **Aluno**.
-- **Dev**: a tela de login tem "Usar token (dev)" para colar um Bearer token e testar rápido
-  (o token precisa carregar `tenant_id` e as permissões de Aluno).
+- **E-mail + senha** (OpenIddict *password grant*), sem navegador: a tela pede e-mail/senha e o
+  `AuthService` troca por tokens em `POST /connect/token`; refresh silencioso via refresh token.
+- Requer o cliente OpenIddict público `mobile-app` no Auth.API (semeado) com o grant `password`.
+  Dev: use os usuários mock (Rita/Diego, senha `@123mudar`).
 
 ## Estrutura
 
@@ -51,7 +51,7 @@ lib/
 ├── main.dart
 ├── core/
 │   ├── config/app_config.dart        # dart-defines (URLs, client id)
-│   ├── auth/                         # AuthService (OIDC/token) + AuthController
+│   ├── auth/                         # AuthService (password grant) + AuthController
 │   ├── api/                          # ApiClient (dio) + TrainingApi (endpoints)
 │   ├── db/local_store.dart           # sqflite: cache + fila de sessões offline
 │   ├── sync/sync_service.dart        # push (sessões offline) + pull (deltas)
