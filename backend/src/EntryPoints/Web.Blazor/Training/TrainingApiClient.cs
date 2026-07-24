@@ -220,6 +220,9 @@ internal sealed class TrainingApiClient(
     public async Task<Guid> ScheduleWorkoutAsync(ScheduleWorkoutRequest request, CancellationToken ct)
         => (await PostAsync<ScheduleWorkoutRequest, IdResponse>($"{Base}/schedule", request, ct)).Id;
 
+    public Task DeleteScheduleAsync(Guid scheduleId, CancellationToken ct)
+        => SendNoBodyAsync(HttpMethod.Delete, $"{Base}/schedule/{scheduleId}", ct);
+
     public Task<WeeklyReportDto?> GetWeeklyReportAsync(DateOnly weekStart, Guid? studentId, CancellationToken ct)
     {
         string path = $"{Base}/reports/weekly?weekStart={weekStart:yyyy-MM-dd}";

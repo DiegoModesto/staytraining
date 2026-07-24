@@ -1,0 +1,165 @@
+@page "/me/training"
+@attribute [Authorize]
+@using System.Security.Claims
+@using Web.Blazor.Training
+@inject ITrainingApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Meu treino</PageTitle>
+
+<PermissionView Permission="workout.write">
+    <MudText Typo="Typo.h4" Class="mb-3">Meu treino</MudText>
+
+    @* ---- Meus treinos ---- *@
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+        <MudText Typo="Typo.h6">Meus treinos</MudText>
+        <MudSpacer />
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateWorkout">Novo treino</MudButton>
+    </MudStack>
+    <MudTable Items="_workouts" Hover Dense Loading="_loading" Breakpoint="Breakpoint.Sm" Class="mb-6">
+        <HeaderContent><MudTh>Treino</MudTh><MudTh>Modalidade</MudTh><MudTh>Exercícios</MudTh></HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Treino">
+                <MudButton Variant="Variant.Text" OnClick="@(() => Nav.NavigateTo($"/workouts/{context.Id}?from=/me/training"))">@context.Name</MudButton>
+            </MudTd>
+            <MudTd DataLabel="Modalidade">@context.ModalityName</MudTd>
+            <MudTd DataLabel="Exercícios">@context.ItemCount</MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>Você ainda não tem treinos. Crie o primeiro.</MudText></NoRecordsContent>
+    </MudTable>
+
+    @* ---- Minha semana ---- *@
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+        <MudText Typo="Typo.h6">Minha semana</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="@(() => Shift(-7))" Disabled="_loading" />
+        <MudText Typo="Typo.subtitle2" Style="min-width:170px;text-align:center">
+            @_weekStart.ToString("dd/MM") – @_weekStart.AddDays(5).ToString("dd/MM/yyyy")
+        </MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="@(() => Shift(7))" Disabled="_loading" />
+        <MudButton StartIcon="@Icons.Material.Filled.Today" OnClick="GoToday" Disabled="_loading">Hoje</MudButton>
+    </MudStack>
+
+    <div class="st-week-grid">
+        @for (int d = 0; d < 6; d++)
+        {
+            var day = _weekStart.AddDays(d);
+            var items = _byDay.TryGetValue(day, out var list) ? list : [];
+            var isToday = day == DateOnly.FromDateTime(DateTime.Today);
+            <MudPaper Outlined Elevation="0" Class="pa-3" Style="@(isToday ? "border-color:var(--st-volt)" : "")">
+                <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+                    <div style="flex:1">
+                        <MudText Typo="Typo.overline" Style="color:var(--mud-palette-text-secondary)">@DayName(day.DayOfWeek)</MudText>
+                        <MudText Typo="Typo.h6" Style="@(isToday ? "color:var(--st-volt)" : "")">@day.ToString("dd/MM")</MudText>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="() => OpenSchedule(day)" />
+                </MudStack>
+                @if (items.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary)">—</MudText>
+                }
+                else
+                {
+                    @foreach (var it in items)
+                    {
+                        <div class="mb-2">
+                            <MudButton FullWidth Class="justify-start" Variant="Variant.Outlined"
+                                       StartIcon="@Icons.Material.Filled.FitnessCenter"
+                                       OnClick="@(() => Nav.NavigateTo($"/workouts/{it.WorkoutId}?from=/me/training"))">@it.WorkoutName</MudButton>
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mt-1">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                         Color="@(it.Completed ? Color.Success : Color.Default)">
+                                    @(it.Completed ? "Concluído" : "Pendente")
+                                </MudChip>
+                                <MudSpacer />
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                               OnClick="() => RemoveSchedule(it)" Title="Remover" />
+                            </MudStack>
+                        </div>
+                    }
+                }
+            </MudPaper>
+        }
+    </div>
+</PermissionView>
+
+@code {
+    private Guid _meId;
+    private IReadOnlyList<WorkoutListItemDto> _workouts = [];
+    private DateOnly _weekStart = MondayOf(DateOnly.FromDateTime(DateTime.Today));
+    private Dictionary<DateOnly, List<WeekScheduleItemDto>> _byDay = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var sub = state.User.FindFirstValue("sub") ?? state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid.TryParse(sub, out _meId);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _workouts = await Api.ListWorkoutsAsync(_meId, CancellationToken.None);
+            var items = await Api.GetWeekScheduleAsync(_weekStart, _meId, CancellationToken.None);
+            _byDay = items.GroupBy(i => i.Date).ToDictionary(g => g.Key, g => g.OrderBy(x => x.WorkoutName).ToList());
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao carregar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateWorkout()
+    {
+        var parameters = new DialogParameters<Dialogs.CreateWorkoutDialog> { { x => x.OwnerStudentId, _meId } };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.CreateWorkoutDialog>("Novo treino", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled && r.Data is Guid id)
+        {
+            Nav.NavigateTo($"/workouts/{id}?from=/me/training");
+        }
+    }
+
+    private async Task OpenSchedule(DateOnly day)
+    {
+        var parameters = new DialogParameters<Dialogs.ScheduleWorkoutDialog>
+        {
+            { x => x.OwnerStudentId, _meId },
+            { x => x.Date, day },
+        };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.ScheduleWorkoutDialog>("Agendar treino", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await LoadAsync();
+    }
+
+    private async Task RemoveSchedule(WeekScheduleItemDto it)
+    {
+        bool? ok = await DialogService.ShowMessageBox(
+            "Remover agendamento", $"Remover \"{it.WorkoutName}\" deste dia?", yesText: "Remover", cancelText: "Cancelar");
+        if (ok != true) return;
+        await Api.DeleteScheduleAsync(it.ScheduleId, CancellationToken.None);
+        await LoadAsync();
+    }
+
+    private async Task Shift(int days) { _weekStart = _weekStart.AddDays(days); await LoadAsync(); }
+    private async Task GoToday() { _weekStart = MondayOf(DateOnly.FromDateTime(DateTime.Today)); await LoadAsync(); }
+
+    private static string DayName(DayOfWeek d) => d switch
+    {
+        DayOfWeek.Monday => "Segunda", DayOfWeek.Tuesday => "Terça", DayOfWeek.Wednesday => "Quarta",
+        DayOfWeek.Thursday => "Quinta", DayOfWeek.Friday => "Sexta", DayOfWeek.Saturday => "Sábado", _ => "Domingo",
+    };
+    private static DateOnly MondayOf(DateOnly d) => d.AddDays(-((int)d.DayOfWeek + 6) % 7);
+}

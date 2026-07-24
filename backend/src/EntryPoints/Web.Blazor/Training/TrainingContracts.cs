@@ -232,9 +232,18 @@ public sealed record ExerciseNoteDto(
     int? PerformedReps,
     DateTimeOffset CreatedAt);
 
-public sealed record WeekScheduleItemDto(Guid ScheduleId, DateOnly Date, Guid WorkoutId, string WorkoutName);
+public sealed record WeekScheduleItemDto(
+    Guid ScheduleId,
+    DateOnly Date,
+    Guid WorkoutId,
+    string WorkoutName,
+    bool Completed = false,
+    string Status = "Pending",
+    string? JustificationReason = null,
+    string? JustificationNote = null,
+    DateOnly? SwappedToDate = null);
 
-public sealed record ScheduleWorkoutRequest(Guid WorkoutId, DateOnly Date);
+public sealed record ScheduleWorkoutRequest(Guid WorkoutId, DateOnly Date, Guid? StudentId = null);
 
 public sealed record WeeklyReportSessionDto(
     Guid SessionId, Guid WorkoutId, DateTimeOffset StartedAt, DateTimeOffset? CompletedAt, int? Rating, int NoteCount);

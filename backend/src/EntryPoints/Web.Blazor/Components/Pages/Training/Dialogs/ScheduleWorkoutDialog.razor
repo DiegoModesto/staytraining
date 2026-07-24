@@ -72,7 +72,8 @@
         _busy = true;
         try
         {
-            var request = new ScheduleWorkoutRequest(_workoutId, DateOnly.FromDateTime(_date.Value));
+            // StudentId = workout owner, so the professor schedules FOR the student (not for self).
+            var request = new ScheduleWorkoutRequest(_workoutId, DateOnly.FromDateTime(_date.Value), OwnerStudentId);
             await Api.ScheduleWorkoutAsync(request, CancellationToken.None);
             Dialog.Close(DialogResult.Ok(true));
         }

@@ -13,6 +13,10 @@
     <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
         <MudText Typo="Typo.h4">Alunos</MudText>
         <MudSpacer />
+        <PermissionView Permission="workout.write">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.SelfImprovement"
+                       OnClick="@(() => Nav.NavigateTo("/me/training"))">Meu treino</MudButton>
+        </PermissionView>
         <PermissionView Permission="student.manage">
             <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PersonAdd"
                        OnClick="OpenRegister">Cadastrar aluno</MudButton>

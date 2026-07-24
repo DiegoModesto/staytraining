@@ -15,7 +15,7 @@
         <MudSpacer />
         <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="@(() => Shift(-7))" Disabled="_loading" />
         <MudText Typo="Typo.subtitle1" Style="min-width:190px;text-align:center">
-            @_weekStart.ToString("dd/MM") – @_weekStart.AddDays(6).ToString("dd/MM/yyyy")
+            @_weekStart.ToString("dd/MM") – @_weekStart.AddDays(5).ToString("dd/MM/yyyy")
         </MudText>
         <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="@(() => Shift(7))" Disabled="_loading" />
         <MudButton StartIcon="@Icons.Material.Filled.Today" OnClick="GoToday" Disabled="_loading">Hoje</MudButton>
@@ -28,7 +28,8 @@
     else
     {
         <div class="st-week-grid">
-            @for (int d = 0; d < 7; d++)
+            @* Segunda a sábado (6 dias). *@
+            @for (int d = 0; d < 6; d++)
             {
                 var day = _weekStart.AddDays(d);
                 var items = _byDay.TryGetValue(day, out var list) ? list : [];
@@ -53,11 +54,22 @@
                         {
                             @foreach (var it in items)
                             {
-                                <MudButton FullWidth Class="mb-1 justify-start" Variant="Variant.Outlined"
-                                           StartIcon="@Icons.Material.Filled.FitnessCenter"
-                                           OnClick="@(() => Nav.NavigateTo($"/workouts/{it.WorkoutId}?from={Uri.EscapeDataString($"/students/{StudentId}/schedule")}"))">
-                                    @it.WorkoutName
-                                </MudButton>
+                                <div class="mb-2">
+                                    <MudButton FullWidth Class="justify-start" Variant="Variant.Outlined"
+                                               StartIcon="@Icons.Material.Filled.FitnessCenter"
+                                               OnClick="@(() => Nav.NavigateTo($"/workouts/{it.WorkoutId}?from={Uri.EscapeDataString($"/students/{StudentId}/schedule")}"))">
+                                        @it.WorkoutName
+                                    </MudButton>
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mt-1">
+                                        @{ var (label, color) = StatusOf(it); }
+                                        <MudChip T="string" Size="Size.Small" Color="color" Variant="Variant.Text">@label</MudChip>
+                                        <MudSpacer />
+                                        <PermissionView Permission="session.write">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                                           OnClick="() => RemoveSchedule(it)" Title="Remover" />
+                                        </PermissionView>
+                                    </MudStack>
+                                </div>
                             }
                         }
                     </MudPaper>
@@ -133,6 +145,33 @@
         if (r is not null && !r.Canceled)
         {
             await LoadAsync();
+        }
+    }
+
+    private static (string Label, Color Color) StatusOf(WeekScheduleItemDto it)
+    {
+        if (it.Completed) return ("Concluído", Color.Success);
+        return it.Status switch
+        {
+            "Skipped" => ("Justificado", Color.Warning),
+            "Swapped" => ("Trocado", Color.Info),
+            _ => ("Pendente", Color.Default),
+        };
+    }
+
+    private async Task RemoveSchedule(WeekScheduleItemDto it)
+    {
+        bool? ok = await DialogService.ShowMessageBox(
+            "Remover agendamento", $"Remover \"{it.WorkoutName}\" deste dia?", yesText: "Remover", cancelText: "Cancelar");
+        if (ok != true) return;
+        try
+        {
+            await Api.DeleteScheduleAsync(it.ScheduleId, CancellationToken.None);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao remover: {ex.Message}", Severity.Error);
         }
     }
 
