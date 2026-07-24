@@ -7,7 +7,10 @@ info:
 
     - **Base:** todas as rotas ficam sob `/api/v1`.
     - **Autenticação:** `Authorization: Bearer <token>` (token opaco emitido pelo Auth.API). O tenant é
-      resolvido pelo gateway.
+      resolvido pelo gateway. O **app (Flutter)** obtém o token por **password grant** (e-mail + senha):
+      `POST {Auth.API}/connect/token` com `grant_type=password&username=<email>&password=<senha>&client_id=mobile-app&scope=openid profile offline_access api:web`
+      (renovação via `grant_type=refresh_token`). O **backoffice (Blazor)** usa Authorization Code + PKCE.
+      Estes endpoints ficam no Auth.API (fora de `/api/v1`).
     - **Autorização:** por permissão. Cada operação indica a permissão exigida em **Permissão:** na
       descrição; operações marcadas apenas como *autenticado* aceitam qualquer token válido.
     - **JSON:** enums são serializados como **inteiros**. Erros seguem `application/problem+json` (RFC 7807).
@@ -50,6 +53,8 @@ tags:
     description: Sincronização offline do app (pull de dados, push de sessões).
   - name: Devices
     description: Registro de token de push.
+  - name: Questions
+    description: Perguntas do aluno ao professor sobre um treino ou exercício, e as respostas.
 
 paths:
   # ---------------- Exercises ----------------
@@ -797,6 +802,54 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  # ---------------- Questions ----------------
+  /questions:
+    get:
+      tags: [Questions]
+      operationId: listTenantQuestions
+      summary: Listar perguntas (professor)
+      description: "Perguntas do tenant; `onlyOpen=true` traz só as não respondidas (fila do professor, não respondidas primeiro). **Permissão:** `question.answer`."
+      parameters: [ { name: onlyOpen, in: query, required: false, schema: { type: boolean, default: false } } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Question" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Questions]
+      operationId: askQuestion
+      summary: Perguntar ao professor (aluno)
+      description: "Cria uma pergunta sobre um treino OU um exercício (ao menos um alvo). **Permissão:** `question.ask`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AskQuestionRequest" } } } }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /questions/mine:
+    get:
+      tags: [Questions]
+      operationId: listMyQuestions
+      summary: Minhas perguntas (aluno)
+      description: "Perguntas do usuário logado, com as respostas, mais recentes primeiro. *Autenticado* (baseline `workout.read`)."
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Question" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /questions/{id}/answer:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    post:
+      tags: [Questions]
+      operationId: answerQuestion
+      summary: Responder pergunta (professor)
+      description: "Registra/atualiza a resposta do professor. **Permissão:** `question.answer`."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AnswerQuestionRequest" } } } }
+      responses:
+        "204": { description: No Content }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: opaque }
@@ -1312,6 +1365,38 @@ components:
         date: { type: string, format: date }
         workoutId: { type: string, format: uuid }
         workoutName: { type: string }
+        completed: { type: boolean, description: "Há uma sessão concluída deste treino na semana (fica só-leitura no app)." }
+    Question:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        workoutId: { type: [string, "null"], format: uuid }
+        workoutName: { type: [string, "null"] }
+        exerciseId: { type: [string, "null"], format: uuid }
+        exerciseName: { type: [string, "null"] }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }
+        answerText: { type: [string, "null"] }
+        answeredByName: { type: [string, "null"] }
+        answeredAt: { type: [string, "null"], format: date-time }
+        isAnswered: { type: boolean }
+    AskQuestionRequest:
+      type: object
+      required: [text]
+      description: "Ao menos um de workoutId/exerciseId deve ser informado."
+      properties:
+        workoutId: { type: [string, "null"], format: uuid }
+        exerciseId: { type: [string, "null"], format: uuid }
+        text: { type: string, maxLength: 4000 }
+      example: { workoutId: "fe3c872c-54e3-47af-978d-dfe41f4ea449", text: "Posso trocar o supino por crucifixo?" }
+    AnswerQuestionRequest:
+      type: object
+      required: [answer]
+      properties:
+        answer: { type: string, maxLength: 4000 }
+      example: { answer: "Pode sim, mantenha 3x12 e foque na fase excêntrica." }
     WeeklyReportSession:
       type: object
       properties:
