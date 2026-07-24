@@ -19,7 +19,13 @@ public sealed class ScheduleWorkoutForDayCommandHandler(
     {
         Guid tenantId = userContext.TenantId
             ?? throw new InvalidOperationException("TenantId is required to schedule a workout.");
-        Guid studentId = userContext.UserId;
+
+        // A plain student always schedules for themselves; only a manager (professor with
+        // student.manage) may schedule FOR another student.
+        Guid studentId =
+            command.StudentId is Guid target && target != Guid.Empty && userContext.HasPermission("student.manage")
+                ? target
+                : userContext.UserId;
 
         bool workoutExists = await dbContext.Workouts
             .AnyAsync(w => w.Id == command.WorkoutId && !w.IsDeleted && w.TenantId == tenantId, cancellationToken);

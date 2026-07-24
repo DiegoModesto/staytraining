@@ -18,6 +18,9 @@ internal sealed class WorkoutScheduleConfiguration : AbstractConfiguration<Worko
         builder.Property(e => e.StudentId).IsRequired();
         builder.Property(e => e.WorkoutId).IsRequired();
         builder.Property(e => e.ScheduledDate).IsRequired();
+        builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(e => e.JustificationReason).HasMaxLength(40);
+        builder.Property(e => e.JustificationNote).HasMaxLength(1000);
 
         builder.HasIndex(e => new { e.TenantId, e.StudentId, e.ScheduledDate });
     }

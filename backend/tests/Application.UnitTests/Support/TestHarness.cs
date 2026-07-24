@@ -18,12 +18,19 @@ public sealed class FakeFileStorage : IFileStorage
 }
 
 /// <summary>Deterministic fake of <see cref="IUserContext"/> for handler tests.</summary>
-public sealed class FakeUserContext(Guid? tenantId, Guid userId, string? name = null) : IUserContext
+public sealed class FakeUserContext(
+    Guid? tenantId,
+    Guid userId,
+    string? name = null,
+    IReadOnlySet<string>? permissions = null) : IUserContext
 {
     public Guid UserId { get; } = userId;
     public Guid? TenantId { get; } = tenantId;
     public bool IsAuthenticated => true;
     public string? Name { get; } = name;
+
+    // Null => acts as a full manager (honors every permission), preserving prior test behavior.
+    public bool HasPermission(string permission) => permissions is null || permissions.Contains(permission);
 }
 
 /// <summary>
@@ -41,6 +48,10 @@ public static class TestHarness
 
     public static FakeUserContext User(Guid tenantId, Guid? userId = null, string? name = null) =>
         new(tenantId, userId ?? Guid.NewGuid(), name);
+
+    /// <summary>A plain student (no <c>student.manage</c>) — HasPermission is false for everything.</summary>
+    public static FakeUserContext Student(Guid tenantId, Guid userId) =>
+        new(tenantId, userId, name: null, permissions: new HashSet<string>());
 
     /// <summary>Adds a modality to the (global) catalog and returns its id, for tests that need a valid FK.</summary>
     public static Guid SeedModality(ApplicationDbContext db, string name = "Musculação", bool isIntervalBased = false)

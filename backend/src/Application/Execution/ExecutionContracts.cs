@@ -5,7 +5,12 @@ public sealed record WeekScheduleItemResponse(
     DateOnly Date,
     Guid WorkoutId,
     string WorkoutName,
-    bool Completed);
+    bool Completed,
+    string Status,
+    string? JustificationReason,
+    string? JustificationNote,
+    DateOnly? SwappedToDate,
+    Guid? SwappedFromScheduleId);
 
 public sealed record ExerciseNoteResponse(
     Guid Id,

@@ -5,28 +5,27 @@ using Web.API.Infrastructure;
 
 namespace Web.API.Endpoints.Schedule;
 
-internal sealed class ScheduleWorkoutForDayEndpoint : IEndpoint
+internal sealed class SwapScheduleDayEndpoint : IEndpoint
 {
-    // StudentId is honored only for a manager (professor); otherwise the caller is used.
-    public sealed record Request(Guid WorkoutId, DateOnly Date, Guid? StudentId);
+    public sealed record Request(DateOnly NewDate, string? Reason, string? Note);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("schedule", async (
+        app.MapPost("schedule/{id:guid}/swap", async (
+                Guid id,
                 Request request,
-                ICommandHandler<ScheduleWorkoutForDayCommand, Guid> handler,
+                ICommandHandler<SwapScheduleDayCommand, Guid> handler,
                 CancellationToken cancellationToken) =>
             {
                 var result = await handler.Handle(
-                    new ScheduleWorkoutForDayCommand(request.WorkoutId, request.Date, request.StudentId),
-                    cancellationToken);
+                    new SwapScheduleDayCommand(id, request.NewDate, request.Reason, request.Note), cancellationToken);
 
                 return result.Match(
-                    id => Results.Created($"/api/v1/schedule/{id}", new { id }),
+                    newId => Results.Created($"/api/v1/schedule/{newId}", new { id = newId }),
                     CustomResults.Problem);
             })
             .WithTags(Tags.Schedule)
-            .WithName("ScheduleWorkoutForDay")
+            .WithName("SwapScheduleDay")
             .RequireAuthorization($"{Infra.Authorization.PermissionPolicyProvider.PolicyPrefix}session.write");
     }
 }
