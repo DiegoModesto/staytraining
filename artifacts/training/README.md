@@ -9,6 +9,8 @@ cadastrar exercícios/modelos e para produzir mídias (ver também `artifacts/to
   descrição de como executar cada um.
 - **[modelos.md](modelos.md)** — modelos de treino (combinações prontas de exercícios) por objetivo
   e modalidade, com séries/repetições/descanso sugeridos.
+- **[video_prompts.md](video_prompts.md)** — prompts de **image-to-video** por exercício (a partir da
+  foto do modelo), com execução passo a passo, loop e câmera/iluminação/4K. Ver também `../../design_prompt.md`.
 
 ## Modalidades
 
