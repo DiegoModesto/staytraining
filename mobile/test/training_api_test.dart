@@ -116,6 +116,47 @@ void main() {
     expect(captured['text'], 'Dúvida');
   });
 
+  test('justifySkip posts reason and note', () async {
+    when(() => dio.post(any(), data: any(named: 'data')))
+        .thenAnswer((_) async => _resp('/api/v1/schedule/s1/skip', null));
+
+    await api.justifySkip('s1', 'feriado', 'Feriado');
+
+    final captured = verify(() => dio.post('/api/v1/schedule/s1/skip', data: captureAny(named: 'data')))
+        .captured
+        .single as Map<String, dynamic>;
+    expect(captured['reason'], 'feriado');
+    expect(captured['note'], 'Feriado');
+  });
+
+  test('swapDay posts the new date formatted', () async {
+    when(() => dio.post(any(), data: any(named: 'data')))
+        .thenAnswer((_) async => _resp('/api/v1/schedule/s1/swap', {'id': 's2'}));
+
+    await api.swapDay('s1', DateTime(2026, 1, 9));
+
+    final captured = verify(() => dio.post('/api/v1/schedule/s1/swap', data: captureAny(named: 'data')))
+        .captured
+        .single as Map<String, dynamic>;
+    expect(captured['newDate'], '2026-01-09');
+  });
+
+  test('WeekScheduleItem parses status and swap fields', () {
+    final item = WeekScheduleItem.fromJson({
+      'scheduleId': 's1',
+      'date': '2026-01-07',
+      'workoutId': 'w1',
+      'workoutName': 'Costas',
+      'completed': false,
+      'status': 'Swapped',
+      'justificationReason': 'troca',
+      'swappedToDate': '2026-01-09',
+    });
+    expect(item.isSwapped, isTrue);
+    expect(item.swappedToDate, DateTime(2026, 1, 9));
+    expect(item.justificationReason, 'troca');
+  });
+
   test('listMyQuestions parses questions with answers', () async {
     when(() => dio.get(any(), queryParameters: any(named: 'queryParameters'))).thenAnswer(
       (_) async => _resp('/api/v1/questions/mine', [

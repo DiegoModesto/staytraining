@@ -84,6 +84,13 @@ class TrainingApi {
     return (r.data as List).map((e) => WeekScheduleItem.fromJson(e)).toList();
   }
 
+  Future<void> justifySkip(String scheduleId, String reason, String? note) =>
+      _client.dio.post('/api/v1/schedule/$scheduleId/skip', data: {'reason': reason, 'note': note});
+
+  Future<void> swapDay(String scheduleId, DateTime newDate, {String? reason, String? note}) =>
+      _client.dio.post('/api/v1/schedule/$scheduleId/swap',
+          data: {'newDate': _dateFmt.format(newDate), 'reason': reason, 'note': note});
+
   Future<String> scheduleWorkout(String workoutId, DateTime date) async {
     final r = await _client.dio.post('/api/v1/schedule',
         data: {'workoutId': workoutId, 'date': _dateFmt.format(date)});

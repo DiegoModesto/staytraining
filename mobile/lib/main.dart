@@ -37,6 +37,8 @@ class _StayTrainingAppState extends ConsumerState<StayTrainingApp> {
         push.register();
       } else {
         push.reset();
+        // Clear cached data on logout so the next login starts fresh.
+        ref.read(localStoreProvider).clearCache();
       }
     });
 

@@ -6,6 +6,7 @@ import '../../core/di/providers.dart';
 import '../../core/ui/responsive.dart';
 import '../../core/util/dates.dart';
 import '../../models/models.dart';
+import '../schedule/schedule_actions.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -65,7 +66,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   _Greeting(name: ref.watch(myProfileProvider).asData?.value.fullName),
                   const SizedBox(height: 16),
-                  _WeekList(future: _week),
+                  _WeekList(future: _week, onChanged: _reload),
                 ],
               ),
             ),
@@ -90,12 +91,13 @@ class _Greeting extends StatelessWidget {
   }
 }
 
-class _WeekList extends StatelessWidget {
-  const _WeekList({required this.future});
+class _WeekList extends ConsumerWidget {
+  const _WeekList({required this.future, required this.onChanged});
   final Future<List<WeekScheduleItem>> future;
+  final VoidCallback onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -114,29 +116,64 @@ class _WeekList extends StatelessWidget {
             if (items.isEmpty) {
               return const Card(child: ListTile(title: Text('Nenhum treino agendado para esta semana.')));
             }
-            return Column(
-              children: items
-                  .map((i) => Card(
-                        child: ListTile(
-                          leading: CircleAvatar(child: Text(weekdayLabel(i.date))),
-                          title: Text(i.workoutName),
-                          subtitle: i.completed ? const Text('Concluído') : null,
-                          // Concluded workouts are view-only (tap opens the read-only plan);
-                          // only pending ones offer "Treinar".
-                          trailing: i.completed
-                              ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
-                              : FilledButton(
-                                  onPressed: () => context.go('/session/${i.workoutId}'),
-                                  child: const Text('Treinar'),
-                                ),
-                          onTap: () => context.go('/workouts/${i.workoutId}'),
-                        ),
-                      ))
-                  .toList(),
-            );
+            return Column(children: [for (final i in items) _scheduleCard(context, ref, i)]);
           },
         ),
       ],
+    );
+  }
+
+  Widget _scheduleCard(BuildContext context, WidgetRef ref, WeekScheduleItem i) {
+    final theme = Theme.of(context);
+    String? subtitle;
+    Widget? trailing;
+
+    if (i.completed) {
+      subtitle = 'Concluído';
+      trailing = Icon(Icons.check_circle, color: theme.colorScheme.primary);
+    } else if (i.isSkipped) {
+      final reason = scheduleSkipReasons[i.justificationReason] ?? i.justificationReason;
+      subtitle = reason == null ? 'Justificado' : 'Justificado • $reason';
+      trailing = Icon(Icons.event_busy, color: theme.colorScheme.onSurfaceVariant);
+    } else if (i.isSwapped) {
+      subtitle = i.swappedToDate == null
+          ? 'Trocado'
+          : 'Trocado p/ ${i.swappedToDate!.day.toString().padLeft(2, '0')}/${i.swappedToDate!.month.toString().padLeft(2, '0')}';
+      trailing = Icon(Icons.swap_horiz, color: theme.colorScheme.onSurfaceVariant);
+    } else {
+      // Pending: treinar + ações (justificar / trocar de dia).
+      trailing = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton(
+            onPressed: () => context.go('/session/${i.workoutId}'),
+            child: const Text('Treinar'),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Ações',
+            onSelected: (v) async {
+              final ok = v == 'justify'
+                  ? await showJustifyDialog(context, ref, i)
+                  : await showSwapDialog(context, ref, i);
+              if (ok) onChanged();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'justify', child: Text('Justificar')),
+              PopupMenuItem(value: 'swap', child: Text('Trocar de dia')),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(child: Text(weekdayLabel(i.date))),
+        title: Text(i.workoutName),
+        subtitle: subtitle == null ? null : Text(subtitle),
+        trailing: trailing,
+        onTap: () => context.go('/workouts/${i.workoutId}'),
+      ),
     );
   }
 }

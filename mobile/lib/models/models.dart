@@ -276,6 +276,10 @@ class WeekScheduleItem {
     required this.workoutId,
     required this.workoutName,
     this.completed = false,
+    this.status = 'Pending',
+    this.justificationReason,
+    this.justificationNote,
+    this.swappedToDate,
   });
   final String scheduleId;
   final DateTime date;
@@ -283,12 +287,26 @@ class WeekScheduleItem {
   final String workoutName;
   final bool completed;
 
+  /// Server status: 'Pending' | 'Skipped' | 'Swapped'. Completion overrides for display.
+  final String status;
+  final String? justificationReason;
+  final String? justificationNote;
+  final DateTime? swappedToDate;
+
+  bool get isSkipped => status == 'Skipped';
+  bool get isSwapped => status == 'Swapped';
+  bool get isPending => !completed && status == 'Pending';
+
   factory WeekScheduleItem.fromJson(Map<String, dynamic> j) => WeekScheduleItem(
         scheduleId: j['scheduleId'] as String,
         date: DateTime.parse(j['date'] as String),
         workoutId: j['workoutId'] as String,
         workoutName: j['workoutName'] as String,
         completed: (j['completed'] ?? false) as bool,
+        status: (j['status'] ?? 'Pending') as String,
+        justificationReason: j['justificationReason'] as String?,
+        justificationNote: j['justificationNote'] as String?,
+        swappedToDate: j['swappedToDate'] == null ? null : DateTime.parse(j['swappedToDate'] as String),
       );
 }
 

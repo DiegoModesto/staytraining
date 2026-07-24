@@ -39,6 +39,12 @@ class LocalStore {
 
   Future<void> setJson(String key, Object value) => setString(key, jsonEncode(value));
 
+  /// Wipes the key/value cache (HTTP responses etc.). Called on logout so a new login starts fresh.
+  Future<void> clearCache() async {
+    final db = await _open();
+    await db.delete('cache');
+  }
+
   Future<T?> getJson<T>(String key) async {
     final raw = await getString(key);
     return raw == null ? null : jsonDecode(raw) as T;
