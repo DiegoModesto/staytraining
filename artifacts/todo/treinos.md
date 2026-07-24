@@ -118,3 +118,44 @@
 - [ ] Funcional: Afundo, Burpee, Prancha
 - [ ] Musculação: Agachamento livre, Crucifixo, Desenvolvimento militar, Elevação lateral,
       Levantamento terra, Puxada frente, Remada curvada, Rosca direta, Supino reto, Tríceps corda
+
+---
+
+## Fontes de GIF (abertas / candidatas)
+
+> ⚠️ **Licença:** confira os termos de cada fonte antes de usar/redistribuir. Preferir domínio
+> público / Creative Commons; evitar GIFs de sites comerciais sem autorização.
+
+- **Free Exercise DB** — domínio público, ~800 exercícios com imagens: <https://yuhonas.github.io/free-exercise-db/>
+- **exercises-dataset** (GIFs, 6 idiomas): <https://github.com/hasaneyldrm/exercises-dataset>
+- **ExerciseDB API** (11k+ exercícios com GIFs; requer chave): <https://github.com/ExerciseDB/exercisedb-api>
+- **MuscleWiki** (GIFs; verificar termos de uso): <https://musclewiki.com>
+- **Pixabay GIFs** (licença Pixabay): <https://pixabay.com/gifs/>
+- **LottieFiles** (animações vetoriais, alternativa a GIF): <https://lottiefiles.com/free-animations/exercise>
+
+## Candidatos por exercício (termo EN + busca)
+
+Use o **termo em inglês** para localizar nos datasets acima; o link abre a busca de imagens (GIF).
+
+| Exercício (PT) | Termo (EN) | Buscar |
+|---|---|---|
+| Polichinelo | jumping jacks | [imagens](https://www.google.com/search?tbm=isch&q=jumping+jacks+gif) |
+| Pular corda | jump rope | [imagens](https://www.google.com/search?tbm=isch&q=jump+rope+gif) |
+| Jab e direto (sombra) | boxing jab cross | [imagens](https://www.google.com/search?tbm=isch&q=boxing+jab+cross+gif) |
+| Saco pesado | heavy bag boxing | [imagens](https://www.google.com/search?tbm=isch&q=heavy+bag+boxing+gif) |
+| Afundo | lunge | [imagens](https://www.google.com/search?tbm=isch&q=dumbbell+lunge+gif) |
+| Burpee | burpee | [imagens](https://www.google.com/search?tbm=isch&q=burpee+gif) |
+| Prancha | plank | [imagens](https://www.google.com/search?tbm=isch&q=plank+exercise+gif) |
+| Agachamento livre | barbell squat | [imagens](https://www.google.com/search?tbm=isch&q=barbell+squat+gif) |
+| Crucifixo | dumbbell fly | [imagens](https://www.google.com/search?tbm=isch&q=dumbbell+chest+fly+gif) |
+| Desenvolvimento militar | overhead/military press | [imagens](https://www.google.com/search?tbm=isch&q=military+press+gif) |
+| Elevação lateral | lateral raise | [imagens](https://www.google.com/search?tbm=isch&q=dumbbell+lateral+raise+gif) |
+| Levantamento terra | deadlift | [imagens](https://www.google.com/search?tbm=isch&q=barbell+deadlift+gif) |
+| Puxada frente | lat pulldown | [imagens](https://www.google.com/search?tbm=isch&q=lat+pulldown+gif) |
+| Remada curvada | bent-over row | [imagens](https://www.google.com/search?tbm=isch&q=barbell+bent+over+row+gif) |
+| Rosca direta | barbell curl | [imagens](https://www.google.com/search?tbm=isch&q=barbell+biceps+curl+gif) |
+| Supino reto | bench press | [imagens](https://www.google.com/search?tbm=isch&q=barbell+bench+press+gif) |
+| Tríceps corda | triceps rope pushdown | [imagens](https://www.google.com/search?tbm=isch&q=triceps+rope+pushdown+gif) |
+
+> **Como anexar:** depois de escolher/validar um GIF, suba-o como mídia do exercício pelo backoffice
+> (upload já existente) ou anexe um link. O app já exibe GIF/vídeo/imagem por exercício.
